@@ -1,1 +1,3200 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark light" />
+    <title>Trading Dashboard</title>
+
+    <!-- If you want maximum speed in production, replace Tailwind browser runtime with a compiled CSS build.
+         Keeping your CDN approach as requested. -->
+    <script defer src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      :root {
+        --bg-primary: #0a0e17;
+        --bg-secondary: #111827;
+        --bg-tertiary: #1f2937;
+        --bg-card: #151c2c;
+        --border-color: #2d3748;
+        --border-light: #374151;
+        --text-primary: #fbfbfc;
+        --text-secondary: #9ca3af;
+        --text-muted: #6b7280;
+        --accent-blue: #3b82f6;
+        --accent-green: #10b981;
+        --accent-red: #ef4444;
+        --accent-yellow: #f59e0b;
+        --accent-purple: #8b5cf6;
+
+        --dock-w: 42px;
+        --preloader-duration: 30s;
+        --topbar-height: 42px;
+        --topbar-bg: #0b0f1a;
+        --topbar-border: rgba(255, 255, 255, 0.12);
+        --anim: 0.12s;
+
+        --news-font-scale: 1;
+        --calendar-text: #ffffff;
+        --news-text: #f9fafb;
+        --news-text-secondary: #e5e7eb;
+        --news-text-muted: #d1d5db;
+
+        /* Zoom compensation for session time font-size */
+        --zoom-comp: 1;
+      }
+
+      [data-theme="light"] {
+        --bg-primary: #f3f4f6;
+        --bg-secondary: #ffffff;
+        --bg-tertiary: #e5e7eb;
+        --bg-card: #ffffff;
+        --border-color: #d1d5db;
+        --border-light: #e5e7eb;
+        --text-primary: #111827;
+        --text-secondary: #4b5563;
+        --text-muted: #9ca3af;
+        --topbar-bg: #ffffff;
+        --topbar-border: rgba(17, 24, 39, 0.12);
+        --calendar-text: #000000;
+        --news-text: #111827;
+        --news-text-secondary: #111827;
+        --news-text-muted: #374151;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        font-family: "Inter", system-ui, -apple-system, sans-serif;
+        background: var(--bg-primary);
+        color: var(--text-primary);
+        overflow: hidden;
+        padding-top: var(--topbar-height);
+      }
+
+      ::-webkit-scrollbar {
+        width: 5px;
+        height: 5px;
+      }
+      ::-webkit-scrollbar-track {
+        background: var(--bg-secondary);
+      }
+      ::-webkit-scrollbar-thumb {
+        background: var(--border-color);
+        border-radius: 3px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: var(--border-light);
+      }
+
+      /* Topbar */
+      .topbar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: var(--topbar-height);
+        background: var(--topbar-bg);
+        border-bottom: 1px solid var(--topbar-border);
+        z-index: 9999;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        padding-right: var(--dock-w);
+        contain: layout paint; /* isolates layout for stability/perf */
+      }
+
+      .ticker-viewport {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        padding: 0 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        contain: layout paint;
+      }
+
+      .ticker-strip {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        white-space: nowrap;
+        gap: 6px;
+        transform-origin: center center;
+        will-change: transform;
+      }
+
+      .ticker-loading {
+        font-size: 12px;
+        color: var(--text-muted);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .ticker-loading-spinner {
+        width: 14px;
+        height: 14px;
+        border: 2px solid var(--border-color);
+        border-top-color: var(--accent-blue);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      tv-ticker-tag {
+        display: inline-block;
+        flex: 0 0 auto;
+        cursor: pointer;
+      }
+
+      /* Dock */
+      .dock {
+        position: fixed;
+        right: 0;
+        top: var(--topbar-height);
+        bottom: 0;
+        width: var(--dock-w);
+        background: var(--bg-secondary);
+        border-left: 1px solid var(--border-color);
+        display: flex;
+        flex-direction: column;
+        z-index: 300;
+        padding: 6px;
+      }
+
+      .dock-section {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .dock-section + .dock-section {
+        margin-top: auto;
+        padding-top: 6px;
+        border-top: 1px solid var(--border-color);
+      }
+
+      .dock-sep {
+        width: 100%;
+        height: 1px;
+        background: var(--border-color);
+        margin: 4px 0;
+      }
+
+      .dock-btn {
+        width: 100%;
+        aspect-ratio: 1;
+        border: none;
+        border-radius: 6px;
+        background: transparent;
+        color: var(--text-muted);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all var(--anim);
+        position: relative;
+      }
+
+      .dock-btn:hover {
+        background: var(--bg-tertiary);
+        color: var(--text-primary);
+      }
+
+      .dock-btn.active {
+        background: var(--accent-blue);
+        color: white;
+      }
+
+      .dock-btn .icon {
+        width: 18px;
+        height: 18px;
+        stroke: currentColor;
+        fill: none;
+        stroke-width: 1.8;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      .dock-tooltip {
+        position: absolute;
+        left: calc(100% + 6px);
+        top: 50%;
+        transform: translateY(-50%);
+        background: var(--bg-tertiary);
+        color: var(--text-primary);
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        white-space: nowrap;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity var(--anim);
+        border: 1px solid var(--border-color);
+        z-index: 1000;
+      }
+
+      .dock-btn:hover .dock-tooltip {
+        opacity: 1;
+      }
+
+      /* Main */
+      main {
+        position: fixed;
+        top: var(--topbar-height);
+        left: 0;
+        right: var(--dock-w);
+        bottom: 0;
+        overflow-y: auto;
+        background: var(--bg-primary);
+        z-index: 1;
+      }
+
+      /* Charts */
+      .chart-section {
+        width: 100%;
+        height: calc(100vh - var(--topbar-height));
+        display: flex;
+        flex-direction: column;
+      }
+
+      .chart-row {
+        flex: 1;
+        display: flex;
+        min-height: 0;
+        position: relative;
+      }
+
+      .chart-row-anchor {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 1px;
+        height: 1px;
+        pointer-events: none;
+      }
+
+      .chart-cell {
+        flex: 1;
+        position: relative;
+        border: 1px solid var(--border-color);
+        margin: -0.5px;
+        overflow: hidden;
+        background: var(--bg-card);
+      }
+
+      .chart-cell .tradingview-widget-container,
+      .chart-cell .tradingview-widget-container__widget {
+        width: 100%;
+        height: 100%;
+      }
+
+      /* Watermark + TF square row */
+      .wm-row {
+        position: absolute;
+        top: 3px;
+        left: 3px;
+        z-index: 12;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        pointer-events: auto;
+      }
+
+      .watermark {
+        z-index: 10;
+        font-size: 10px;
+        font-weight: 600;
+        color: var(--text-primary);
+        cursor: pointer;
+        background: var(--bg-secondary);
+        padding: 2px 6px;
+        border-radius: 4px;
+        border: 1px solid var(--border-color);
+        transition: all var(--anim);
+        line-height: 1;
+        user-select: none;
+      }
+
+      .watermark:hover {
+        background: var(--accent-blue);
+        border-color: var(--accent-blue);
+        color: white;
+      }
+
+      .watermark .tf {
+        font-size: 9px;
+        margin-left: 4px;
+        opacity: 0.7;
+      }
+
+      .tf-square {
+        width: 18px;
+        height: 18px;
+        border-radius: 4px;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        z-index: 12;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 9px;
+        font-weight: 700;
+        color: var(--text-primary);
+        cursor: pointer;
+        user-select: none;
+        transition: all var(--anim);
+        line-height: 1;
+        flex: 0 0 auto;
+      }
+
+      .tf-square:hover {
+        background: var(--accent-blue);
+        border-color: var(--accent-blue);
+        color: white;
+      }
+
+      /* Panel */
+      .panel {
+        position: fixed;
+        top: var(--topbar-height);
+        right: var(--dock-w);
+        height: calc(100vh - var(--topbar-height));
+        width: 75%;
+        background: var(--bg-secondary);
+        border-left: 1px solid var(--border-color);
+        z-index: 250;
+        transform: translateX(100%);
+        transition: transform var(--anim) ease;
+        display: flex;
+        flex-direction: column;
+        box-shadow: -4px 0 20px rgba(0, 0, 0, 0.3);
+        pointer-events: auto;
+      }
+
+      .panel.open {
+        transform: translateX(0);
+      }
+
+      .panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px 12px;
+        border-bottom: 1px solid var(--border-color);
+        background: var(--bg-tertiary);
+        gap: 10px;
+      }
+
+      .panel-title {
+        font-size: 13px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+        flex: 1 1 auto;
+      }
+
+      .panel-title .icon {
+        width: 16px;
+        height: 16px;
+        stroke: var(--accent-blue);
+        fill: none;
+        stroke-width: 1.8;
+        flex: 0 0 auto;
+      }
+
+      /* Tabs in panel title (News only) */
+      .panel-tabs {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex-wrap: wrap;
+        margin-left: 10px;
+      }
+      .tab-btn {
+        padding: 4px 8px;
+        border: 1px solid var(--border-color);
+        border-radius: 999px;
+        background: var(--bg-secondary);
+        color: var(--text-secondary);
+        font-size: 11px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all var(--anim);
+        line-height: 1;
+        user-select: none;
+      }
+      .tab-btn:hover {
+        border-color: var(--border-light);
+        color: var(--text-primary);
+      }
+      .tab-btn.active {
+        border-color: var(--accent-blue);
+        background: rgba(59, 130, 246, 0.15);
+        color: var(--text-primary);
+      }
+
+      .close-btn {
+        width: 26px;
+        height: 26px;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        background: var(--bg-secondary);
+        color: var(--text-primary);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all var(--anim);
+        flex: 0 0 auto;
+      }
+
+      .close-btn:hover {
+        background: var(--accent-red);
+        border-color: var(--accent-red);
+        color: white;
+      }
+
+      .panel-body {
+        flex: 1;
+        overflow: hidden;
+        padding: 0;
+        background: var(--bg-secondary);
+      }
+
+      /* Calendar */
+      .calendar-container {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        background: var(--bg-secondary);
+      }
+
+      .sessions-section {
+        flex: 0 0 25%;
+        height: 25%;
+        padding: 6px 10px 6px;
+        border-top: 1px solid var(--border-color);
+        background: var(--bg-tertiary);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        min-height: 110px;
+      }
+
+      .calendar-section {
+        flex: 1 1 75%;
+        height: 75%;
+        overflow: hidden;
+        background: var(--bg-secondary);
+        position: relative;
+      }
+
+      /* Fit sessions in container without scrolling */
+      #sessionContainer {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        gap: 2px;
+      }
+
+      .session-row {
+        display: flex;
+        align-items: center;
+        padding: 2px 0;
+      }
+
+      .session-label {
+        width: 86px;
+        font-size: 10px;
+        font-weight: 500;
+        color: var(--text-secondary);
+        display: flex;
+        flex-direction: column;
+        line-height: 1.05;
+      }
+
+      .session-label .time {
+        font-size: calc(9px * var(--zoom-comp));
+        color: var(--text-muted);
+        font-variant-numeric: tabular-nums;
+      }
+
+      .session-bar-container {
+        flex: 1;
+        height: 16px;
+        background: var(--bg-secondary);
+        border-radius: 3px;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .session-bar {
+        position: absolute;
+        height: 100%;
+        font-size: 9px;
+        font-weight: 500;
+        color: white;
+        transition: all var(--anim);
+      }
+
+      .session-bar.sydney {
+        background: linear-gradient(90deg, #3b82f6, #60a5fa);
+      }
+      .session-bar.tokyo {
+        background: linear-gradient(90deg, #ef4444, #f87171);
+      }
+      .session-bar.london {
+        background: linear-gradient(90deg, #10b981, #34d399);
+      }
+      .session-bar.newyork {
+        background: linear-gradient(90deg, #f59e0b, #fbbf24);
+      }
+
+      .session-bar.inactive {
+        opacity: 0.3;
+      }
+
+      .time-marker {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: var(--accent-red);
+        z-index: 10;
+      }
+
+      .time-marker::before {
+        content: attr(data-time);
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        background: var(--accent-red);
+        color: white;
+        font-size: 8px;
+        padding: 1px 4px;
+        border-radius: 3px;
+        white-space: nowrap;
+        font-weight: 600;
+      }
+
+      .hour-labels {
+        flex: 0 0 auto;
+        display: flex;
+        justify-content: space-between;
+        margin-top: 2px;
+        padding-left: 86px;
+      }
+
+      .hour-labels span {
+        font-size: 9px;
+        color: var(--text-muted);
+      }
+
+      #economic-calendar-widget {
+        height: 100%;
+        width: 100%;
+        background: var(--bg-secondary);
+        position: relative;
+      }
+
+      /* Calendar high-contrast text + smaller clock */
+      .calendar-container .session-label,
+      .calendar-container .session-label .time,
+      .calendar-container .hour-labels span,
+      .calendar-container .local-clock {
+        color: var(--calendar-text) !important;
+      }
+
+      .local-clock {
+        flex: 0 0 auto;
+        text-align: center;
+        font-weight: 700;
+        line-height: 1.05;
+        font-size: clamp(12px, 1.6vw, 16px);
+        margin: 0 0 4px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      /* News (updated + faster + tabs sources + search only) */
+      .news-container {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        background: var(--bg-secondary);
+      }
+
+      .news-header {
+        padding: 10px 12px;
+        background: var(--bg-tertiary);
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        flex: 0 0 auto;
+      }
+
+      .news-header-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .news-status-wrap {
+        font-size: calc(11px * var(--news-font-scale));
+        color: var(--news-text-muted);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+        min-width: 0;
+      }
+
+      .news-controls {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex: 0 0 auto;
+      }
+
+      .news-btn {
+        padding: 4px 10px;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        font-size: calc(11px * var(--news-font-scale));
+        color: var(--news-text);
+        cursor: pointer;
+        transition: all var(--anim);
+        line-height: 1;
+      }
+
+      .news-btn:hover {
+        background: var(--bg-card);
+        border-color: var(--accent-blue);
+      }
+
+      .quickbar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .search-wrap {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex: 1 1 420px;
+        min-width: 220px;
+      }
+
+      .search-input {
+        width: 100%;
+        padding: 7px 10px;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        background: var(--bg-secondary);
+        color: var(--text-primary);
+        font-size: calc(12px * var(--news-font-scale));
+        outline: none;
+      }
+
+      .search-input:focus {
+        border-color: var(--accent-blue);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+      }
+
+      .search-hint {
+        font-size: calc(10px * var(--news-font-scale));
+        color: var(--news-text-muted);
+        white-space: nowrap;
+      }
+
+      /* Yellow filter tag */
+      .news-tag {
+        font-size: calc(11px * var(--news-font-scale));
+        font-weight: 800;
+        padding: 2px 8px;
+        border-radius: 999px;
+        border: 1px solid var(--border-color);
+        background: rgba(245, 158, 11, 0.12);
+        color: var(--accent-yellow);
+        line-height: 1.2;
+        user-select: none;
+        cursor: default;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .news-tag.clickable {
+        cursor: pointer;
+      }
+
+      .news-tag.clickable:hover {
+        border-color: var(--accent-yellow);
+        background: rgba(245, 158, 11, 0.2);
+      }
+
+      .news-tag.active {
+        border-color: var(--accent-yellow);
+        background: rgba(245, 158, 11, 0.25);
+      }
+
+      /* NEW badge */
+      .badge-new {
+        font-size: calc(10px * var(--news-font-scale));
+        font-weight: 800;
+        padding: 2px 7px;
+        border-radius: 999px;
+        border: 1px solid var(--border-color);
+        background: rgba(59, 130, 246, 0.12);
+        color: var(--accent-blue);
+        line-height: 1.2;
+        user-select: none;
+      }
+
+      .news-list {
+        list-style: none;
+        padding: 10px;
+        overflow: auto;
+        flex: 1 1 auto;
+        min-height: 0;
+        background: var(--bg-secondary);
+      }
+
+      .news-item {
+        padding: 10px;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        margin-bottom: 8px;
+        transition: all var(--anim);
+      }
+
+      .news-item:hover {
+        border-color: var(--border-light);
+      }
+
+      .news-title-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        align-items: baseline;
+      }
+
+      .news-title-row a {
+        color: var(--accent-blue);
+        text-decoration: none;
+        font-weight: 700;
+        font-size: calc(15px * var(--news-font-scale));
+        line-height: 1.3;
+      }
+
+      /* Meta smaller + requested format */
+      .news-meta {
+        font-size: calc(10px * var(--news-font-scale));
+        color: var(--news-text-muted);
+        background: var(--bg-secondary);
+        padding: 1px 6px;
+        border-radius: 3px;
+        line-height: 1.2;
+      }
+
+      .news-desc {
+        margin-top: 6px;
+        font-size: calc(14px * var(--news-font-scale));
+        color: var(--news-text-secondary);
+        line-height: 1.4;
+      }
+
+      /* Favorite star */
+      .star-btn {
+        margin-left: auto;
+        border: 1px solid var(--border-color);
+        background: var(--bg-secondary);
+        color: var(--text-secondary);
+        border-radius: 8px;
+        padding: 4px 8px;
+        cursor: pointer;
+        transition: all var(--anim);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        line-height: 1;
+      }
+
+      .star-btn:hover {
+        border-color: var(--accent-yellow);
+        color: var(--text-primary);
+      }
+
+      .star-btn.active {
+        border-color: var(--accent-yellow);
+        color: var(--accent-yellow);
+        background: rgba(245, 158, 11, 0.12);
+      }
+
+      .star-btn svg {
+        width: 14px;
+        height: 14px;
+        stroke: currentColor;
+        fill: none;
+        stroke-width: 2;
+      }
+
+      .star-btn.active svg {
+        fill: currentColor;
+      }
+
+      /* Arabic RTL */
+      .news-container.rtl {
+        direction: rtl;
+        text-align: right;
+        font-family: "Inter", system-ui, -apple-system, "Noto Naskh Arabic", "Noto Sans Arabic", sans-serif;
+      }
+      .news-container.rtl .news-title-row {
+        justify-content: flex-start;
+      }
+      .news-container.rtl .news-title-row a,
+      .news-container.rtl .news-desc {
+        text-align: right;
+      }
+      .news-container.rtl .news-meta {
+        direction: ltr;
+        unicode-bidi: plaintext;
+      }
+      .news-container.rtl .star-btn {
+        margin-left: 0;
+        margin-right: auto;
+      }
+
+      /* Heatmap */
+      .heatmap-wrap {
+        height: 100%;
+        width: 100%;
+        padding: 12px;
+        background: var(--bg-secondary);
+      }
+
+      #heatmapWidget {
+        height: 100%;
+        width: 100%;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        overflow: hidden;
+      }
+
+      #heatmapWidget .tradingview-widget-container {
+        height: 100%;
+        width: 100%;
+      }
+
+      /* Modal */
+      #chartModal {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.8);
+        z-index: 9999;
+        padding: 15px;
+      }
+
+      #tfChartModal {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.8);
+        z-index: 9999;
+        padding: 15px;
+      }
+
+      .modal-container {
+        width: 100%;
+        height: 100%;
+        background: var(--bg-secondary);
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .modal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px 12px;
+        background: var(--bg-tertiary);
+        border-bottom: 1px solid var(--border-color);
+      }
+
+      .modal-title {
+        font-size: 14px;
+        font-weight: 600;
+      }
+
+      .modal-close {
+        width: 28px;
+        height: 28px;
+        border: none;
+        border-radius: 6px;
+        background: var(--accent-red);
+        color: white;
+        font-size: 16px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all var(--anim);
+      }
+
+      .modal-body {
+        flex: 1;
+        display: flex;
+        min-height: 0;
+      }
+
+      .modal-left {
+        flex: 1;
+        border-right: 1px solid var(--border-color);
+        position: relative;
+      }
+
+      .modal-right {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .modal-right-top,
+      .modal-right-bottom {
+        flex: 1;
+        position: relative;
+      }
+
+      .modal-right-top {
+        border-bottom: 1px solid var(--border-color);
+      }
+
+      .modal-single {
+        flex: 1;
+        position: relative;
+        min-height: 0;
+      }
+
+      @media (max-width: 768px) {
+        .dock {
+          width: 36px;
+        }
+        main {
+          right: 36px;
+        }
+        .panel {
+          width: 85%;
+          right: 36px;
+        }
+        .topbar {
+          padding-right: 36px;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .dock-btn,
+        .watermark,
+        .tf-square,
+        .panel,
+        .close-btn,
+        .news-btn,
+        .news-item,
+        .tab-btn,
+        .news-tag,
+        .star-btn {
+          transition: none !important;
+        }
+      }
+
+      /* ===================== Preloader ===================== */
+      .preloader {
+        position: fixed;
+        inset: 0;
+        z-index: 99999;
+        background: linear-gradient(135deg, #0a0e17 0%, #111827 50%, #0a0e17 100%);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        transition: opacity 0.8s ease, visibility 0.8s ease;
+      }
+
+      [data-theme="light"] .preloader {
+        background: linear-gradient(135deg, #f3f4f6 0%, #ffffff 50%, #f3f4f6 100%);
+      }
+
+      [data-theme="light"] .preloader-title {
+        background: linear-gradient(90deg, #3b82f6, #8b5cf6, #3b82f6);
+        background-size: 200% 100%;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+
+      [data-theme="light"] .preloader-subtitle {
+        color: #6b7280;
+      }
+
+      [data-theme="light"] .progress-percentage {
+        color: #111827;
+      }
+
+      [data-theme="light"] .progress-percentage span {
+        color: #6b7280;
+      }
+
+      [data-theme="light"] .step-item {
+        color: #6b7280;
+      }
+
+      [data-theme="light"] .step-item.active {
+        color: #4b5563;
+      }
+
+      .preloader.hidden {
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+      }
+
+      .preloader-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 40px;
+      }
+
+      .preloader-logo {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .preloader-icon {
+        width: 80px;
+        height: 80px;
+        position: relative;
+      }
+
+      .preloader-icon svg {
+        width: 100%;
+        height: 100%;
+        stroke: var(--accent-blue);
+        fill: none;
+        stroke-width: 1.5;
+        filter: drop-shadow(0 0 20px rgba(59, 130, 246, 0.5));
+      }
+
+      .preloader-icon::before {
+        content: "";
+        position: absolute;
+        inset: -10px;
+        border-radius: 50%;
+        border: 2px solid transparent;
+        border-top-color: var(--accent-blue);
+        border-right-color: var(--accent-purple);
+        animation: preloader-spin 2s linear infinite;
+      }
+
+      @keyframes preloader-spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      .preloader-title {
+        font-size: 28px;
+        font-weight: 700;
+        background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple), var(--accent-blue));
+        background-size: 200% 100%;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        animation: gradient-shift 3s ease infinite;
+      }
+
+      @keyframes gradient-shift {
+        0%,
+        100% {
+          background-position: 0% 50%;
+        }
+        50% {
+          background-position: 100% 50%;
+        }
+      }
+
+      .preloader-subtitle {
+        font-size: 14px;
+        color: var(--text-muted);
+        letter-spacing: 2px;
+        text-transform: uppercase;
+      }
+
+      .preloader-progress {
+        width: 320px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+
+      .progress-bar-container {
+        width: 100%;
+        height: 6px;
+        background: var(--bg-tertiary);
+        border-radius: 3px;
+        overflow: hidden;
+        position: relative;
+      }
+
+      .progress-bar {
+        height: 100%;
+        width: 0%;
+        background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple));
+        border-radius: 3px;
+        transition: width 0.1s linear;
+        position: relative;
+      }
+
+      .progress-bar::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+        animation: shimmer 1.5s infinite;
+      }
+
+      @keyframes shimmer {
+        0% {
+          transform: translateX(-100%);
+        }
+        100% {
+          transform: translateX(100%);
+        }
+      }
+
+      .progress-info {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .progress-percentage {
+        font-size: 36px;
+        font-weight: 700;
+        color: var(--text-primary);
+        font-variant-numeric: tabular-nums;
+      }
+
+      .progress-percentage span {
+        font-size: 20px;
+        color: var(--text-muted);
+      }
+
+      .progress-timer {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 2px;
+      }
+
+      .timer-value {
+        font-size: 24px;
+        font-weight: 600;
+        color: var(--accent-blue);
+        font-variant-numeric: tabular-nums;
+      }
+
+      .timer-label {
+        font-size: 11px;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+      }
+
+      .preloader-steps {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        width: 320px;
+      }
+
+      .step-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 12px;
+        color: var(--text-muted);
+        opacity: 0.4;
+        transition: all 0.3s ease;
+      }
+
+      .step-item.active {
+        opacity: 1;
+        color: var(--text-secondary);
+      }
+
+      .step-item.completed {
+        opacity: 1;
+        color: var(--accent-green);
+      }
+
+      .step-icon {
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        border: 2px solid currentColor;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 10px;
+        flex-shrink: 0;
+      }
+
+      .step-item.active .step-icon {
+        border-color: var(--accent-blue);
+        animation: pulse-step 1s ease infinite;
+      }
+
+      .step-item.completed .step-icon {
+        background: var(--accent-green);
+        border-color: var(--accent-green);
+      }
+
+      .step-item.completed .step-icon::after {
+        content: "✓";
+        color: white;
+        font-weight: bold;
+      }
+
+      @keyframes pulse-step {
+        0%,
+        100% {
+          box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4);
+        }
+        50% {
+          box-shadow: 0 0 0 6px rgba(59, 130, 246, 0);
+        }
+      }
+
+      .preloader-particles {
+        position: absolute;
+        inset: 0;
+        overflow: hidden;
+        pointer-events: none;
+      }
+
+      .particle {
+        position: absolute;
+        width: 4px;
+        height: 4px;
+        background: var(--accent-blue);
+        border-radius: 50%;
+        opacity: 0.3;
+        animation: float-particle 8s infinite ease-in-out;
+      }
+
+      @keyframes float-particle {
+        0%,
+        100% {
+          transform: translateY(0) translateX(0);
+          opacity: 0.3;
+        }
+        25% {
+          transform: translateY(-30px) translateX(10px);
+          opacity: 0.6;
+        }
+        50% {
+          transform: translateY(-50px) translateX(-10px);
+          opacity: 0.3;
+        }
+        75% {
+          transform: translateY(-30px) translateX(15px);
+          opacity: 0.5;
+        }
+      }
+
+      .preloader-active .topbar,
+      .preloader-active .dock,
+      .preloader-active main,
+      .preloader-active .panel {
+        visibility: visible;
+        opacity: 1;
+      }
+    </style>
+  </head>
+
+  <body>
+    <!-- Preloader -->
+    <div class="preloader" id="preloader">
+      <div class="preloader-particles" id="particles"></div>
+      <div class="preloader-content">
+        <div class="preloader-logo">
+          <div class="preloader-icon">
+            <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
+              <polyline points="16 7 22 7 22 13" />
+            </svg>
+          </div>
+          <h1 class="preloader-title">Loading Dashboard</h1>
+          <p class="preloader-subtitle">Professional Market Analysis</p>
+        </div>
+
+        <div class="preloader-progress">
+          <div class="progress-info">
+            <div class="progress-percentage"><span id="percentValue">0</span><span>%</span></div>
+            <div class="progress-timer">
+              <div class="timer-value" id="timerValue">30</div>
+              <div class="timer-label">seconds</div>
+            </div>
+          </div>
+          <div class="progress-bar-container">
+            <div class="progress-bar" id="progressBar"></div>
+          </div>
+        </div>
+
+        <div class="preloader-steps">
+          <div class="step-item" data-step="1">
+            <div class="step-icon"></div>
+            <span>Initializing trading engine...</span>
+          </div>
+          <div class="step-item" data-step="2">
+            <div class="step-icon"></div>
+            <span>Loading market data feeds...</span>
+          </div>
+          <div class="step-item" data-step="3">
+            <div class="step-icon"></div>
+            <span>Connecting to price streams...</span>
+          </div>
+          <div class="step-item" data-step="4">
+            <div class="step-icon"></div>
+            <span>Preparing chart widgets...</span>
+          </div>
+          <div class="step-item" data-step="5">
+            <div class="step-icon"></div>
+            <span>Finalizing dashboard...</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Top Bar -->
+    <div class="topbar">
+      <div class="ticker-viewport" id="tickerViewport">
+        <div class="ticker-strip" id="tickerStrip" role="list" aria-label="Market tickers">
+          <div class="ticker-loading">
+            <div class="ticker-loading-spinner"></div>
+            <span>Loading tickers...</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dock -->
+    <aside class="dock" id="dock" aria-label="Tools dock">
+      <div class="dock-section">
+        <button class="dock-btn" id="themeToggle" title="Toggle Theme" aria-label="Toggle theme" data-action="theme">
+          <svg class="icon" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="5"></circle>
+            <path
+              d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"
+            ></path>
+          </svg>
+          <div class="dock-tooltip">Theme</div>
+        </button>
+
+        <div class="dock-sep"></div>
+
+        <button class="dock-btn" data-panel="calendar" title="Calendar" aria-label="Open calendar panel">
+          <svg class="icon" viewBox="0 0 24 24">
+            <rect x="3" y="4" width="18" height="18" rx="2"></rect>
+            <path d="M16 2v4M8 2v4M3 10h18"></path>
+          </svg>
+          <div class="dock-tooltip">Calendar</div>
+        </button>
+
+        <button class="dock-btn" data-panel="news" title="News" aria-label="Open news panel">
+          <svg class="icon" viewBox="0 0 24 24">
+            <path
+              d="M4 22h16a2 2 0 002-2V4a2 2 0 00-2-2H8a2 2 0 00-2 2v16a2 2 0 01-2 2zm0 0a2 2 0 01-2-2v-9c0-1.1.9-2 2-2h2"
+            ></path>
+            <path d="M10 6h8M10 10h8M10 14h4"></path>
+          </svg>
+          <div class="dock-tooltip">News</div>
+        </button>
+
+        <button class="dock-btn" data-panel="heatmap" title="Forex Heatmap" aria-label="Open forex heatmap panel">
+          <svg class="icon" viewBox="0 0 24 24">
+            <path
+              d="M12 2s2.8 3 2.8 6.2c0 1.4-.6 2.6-1.4 3.5-.9 1-2 1.9-2 3.6 0 1.7 1.3 3 3 3 2.6 0 4.6-2.2 4.6-5.1 0-2.2-1.1-4-2.5-5.6"
+            ></path>
+            <path
+              d="M10.4 7.2S7.6 9.8 7.6 13c0 2.9 2 5 4.7 5 1.9 0 3.4-1.4 3.4-3.3 0-1.3-.7-2.2-1.5-3.1-.7-.8-1.4-1.6-1.4-2.8"
+            ></path>
+          </svg>
+          <div class="dock-tooltip">Heatmap</div>
+        </button>
+      </div>
+
+      <div class="dock-section">
+        <button class="dock-btn" data-action="refresh" title="Refresh" aria-label="Refresh page" id="refreshBtn">
+          <svg class="icon" viewBox="0 0 24 24">
+            <path d="M23 4v6h-6M1 20v-6h6"></path>
+            <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"></path>
+          </svg>
+          <div class="dock-tooltip">Refresh</div>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Side Panel -->
+    <section id="sidePanel" class="panel" aria-label="Side panel" aria-hidden="true">
+      <div class="panel-header">
+        <h2 id="panelTitle" class="panel-title">
+          <svg class="icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" /></svg>
+          <span>Panel</span>
+        </h2>
+        <button id="closePanel" class="close-btn" aria-label="Close panel">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6L6 18M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <div id="panelBody" class="panel-body"></div>
+    </section>
+
+    <!-- Chart Modal -->
+    <div id="chartModal" role="dialog" aria-modal="true" aria-label="Chart comparison modal">
+      <div class="modal-container" role="document">
+        <div class="modal-header">
+          <div class="modal-title" id="modalSymbol">Symbol</div>
+          <button class="modal-close" id="closeChartModal" aria-label="Close chart modal">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="modal-left" id="popupLeft"></div>
+          <div class="modal-right">
+            <div class="modal-right-top" id="popupRightTop"></div>
+            <div class="modal-right-bottom" id="popupRightBottom"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Single Timeframe Chart Modal -->
+    <div id="tfChartModal" role="dialog" aria-modal="true" aria-label="Single timeframe chart modal">
+      <div class="modal-container" role="document">
+        <div class="modal-header">
+          <div class="modal-title" id="tfModalSymbol">Symbol</div>
+          <button class="modal-close" id="closeTfChartModal" aria-label="Close timeframe modal">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="modal-single" id="tfPopupMain"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <main id="mainContent"></main>
+
+    <script>
+      (() => {
+        "use strict";
+
+        /* ===================== Preloader ===================== */
+        const PRELOAD_DURATION = 30; // seconds
+        function initPreloader() {
+          const preloader = document.getElementById("preloader");
+          const progressBar = document.getElementById("progressBar");
+          const percentValue = document.getElementById("percentValue");
+          const timerValue = document.getElementById("timerValue");
+          const particlesContainer = document.getElementById("particles");
+          const steps = document.querySelectorAll(".step-item");
+          if (!preloader) return;
+
+          document.body.classList.add("preloader-active");
+          createParticles(particlesContainer);
+
+          const startTime = Date.now();
+          const endTime = startTime + PRELOAD_DURATION * 1000;
+
+          const stepThresholds = [0, 20, 40, 60, 85];
+
+          function updateProgress() {
+            const now = Date.now();
+            const elapsed = now - startTime;
+            const remaining = Math.max(0, endTime - now);
+            const progress = Math.min(100, (elapsed / (PRELOAD_DURATION * 1000)) * 100);
+
+            const percent = Math.floor(progress);
+            percentValue.textContent = percent;
+            progressBar.style.width = `${progress}%`;
+
+            const secondsLeft = Math.ceil(remaining / 1000);
+            timerValue.textContent = secondsLeft;
+
+            steps.forEach((step, index) => {
+              const threshold = stepThresholds[index];
+              const nextThreshold = stepThresholds[index + 1] || 100;
+              if (progress >= nextThreshold) {
+                step.classList.remove("active");
+                step.classList.add("completed");
+              } else if (progress >= threshold) {
+                step.classList.add("active");
+                step.classList.remove("completed");
+              } else {
+                step.classList.remove("active", "completed");
+              }
+            });
+
+            if (progress < 100) {
+              requestAnimationFrame(updateProgress);
+            } else {
+              finishPreloader();
+            }
+          }
+
+          function finishPreloader() {
+            steps.forEach((step) => {
+              step.classList.remove("active");
+              step.classList.add("completed");
+            });
+
+            setTimeout(() => {
+              preloader.classList.add("hidden");
+              document.body.classList.remove("preloader-active");
+              setTimeout(() => {
+                preloader.remove();
+              }, 800);
+            }, 300);
+          }
+
+          function createParticles(container) {
+            if (!container) return;
+            const particleCount = 20;
+            for (let i = 0; i < particleCount; i++) {
+              const particle = document.createElement("div");
+              particle.className = "particle";
+              particle.style.left = `${Math.random() * 100}%`;
+              particle.style.top = `${Math.random() * 100}%`;
+              particle.style.animationDelay = `${Math.random() * 8}s`;
+              particle.style.animationDuration = `${6 + Math.random() * 4}s`;
+              const colors = ["var(--accent-blue)", "var(--accent-purple)", "var(--accent-green)"];
+              particle.style.background = colors[(Math.random() * colors.length) | 0];
+              container.appendChild(particle);
+            }
+          }
+
+          requestAnimationFrame(updateProgress);
+        }
+        initPreloader();
+
+        /* ===================== Constants ===================== */
+        const TICKER_SYMBOLS = [
+          "OANDA:EURUSD",
+          "OANDA:GBPUSD",
+          "OANDA:USDJPY",
+          "OANDA:USDCHF",
+          "OANDA:USDCAD",
+          "OANDA:AUDUSD",
+          "OANDA:NZDUSD",
+          "OANDA:XAUUSD",
+          "COINBASE:BTCUSD",
+          "TVC:USOIL",
+          "FOREXCOM:SPX500",
+          "CAPITALCOM:DXY",
+        ];
+
+        const SYMBOLS = [
+          { symbol: "OANDA:EURUSD", name: "EUR/USD" },
+          { symbol: "OANDA:GBPUSD", name: "GBP/USD" },
+          { symbol: "OANDA:USDJPY", name: "USD/JPY" },
+          { symbol: "OANDA:USDCHF", name: "USD/CHF" },
+          { symbol: "OANDA:USDCAD", name: "USD/CAD" },
+          { symbol: "OANDA:AUDUSD", name: "AUD/USD" },
+          { symbol: "OANDA:NZDUSD", name: "NZD/USD" },
+          { symbol: "OANDA:XAUUSD", name: "XAU/USD" },
+          { symbol: "COINBASE:BTCUSD", name: "BTC/USD" },
+          { symbol: "TVC:USOIL", name: "US Oil" },
+          { symbol: "FOREXCOM:SPX500", name: "S&P 500" },
+          { symbol: "CAPITALCOM:DXY", name: "DXY" },
+        ];
+
+        const TIMEFRAMES = [
+          { interval: "15", label: "15m" },
+          { interval: "60", label: "1H" },
+          { interval: "240", label: "4H" },
+        ];
+
+        const TV_TICKER_SCRIPT_URL = "https://widgets.tradingview-widget.com/w/en/tv-ticker-tag.js";
+        const TV_TICKER_SCRIPT_ID = "tv-ticker-tag-script";
+
+        const $ = (sel, root = document) => root.querySelector(sel);
+        const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+
+        function safeStorageGet(key, fallback = null) {
+          try {
+            const v = localStorage.getItem(key);
+            return v == null ? fallback : v;
+          } catch {
+            return fallback;
+          }
+        }
+        function safeStorageSet(key, value) {
+          try {
+            localStorage.setItem(key, value);
+          } catch {
+            /* ignore */
+          }
+        }
+        function safeIdFromSymbol(symbol) {
+          return String(symbol).replace(/[^a-zA-Z0-9]+/g, "-").toLowerCase();
+        }
+
+        /* ===================== Theme ===================== */
+        const savedTheme = safeStorageGet("theme", "dark") || "dark";
+        document.documentElement.setAttribute("data-theme", savedTheme);
+
+        function getTheme() {
+          return document.documentElement.getAttribute("data-theme");
+        }
+
+        function updateThemeIcon() {
+          const theme = getTheme();
+          const btn = $("#themeToggle");
+          if (!btn) return;
+          btn.innerHTML =
+            theme === "dark"
+              ? '<svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg><div class="dock-tooltip">Theme</div>'
+              : '<svg class="icon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg><div class="dock-tooltip">Theme</div>';
+        }
+
+        /* ===== Zoom compensation ===== */
+        function syncZoomComp() {
+          const dpr = window.devicePixelRatio || 1;
+          const comp = Math.max(0.7, Math.min(1.15, 1 / dpr));
+          document.documentElement.style.setProperty("--zoom-comp", comp.toFixed(3));
+        }
+
+        /* ===================== News font scale ===================== */
+        let newsFontScale = Number(safeStorageGet("newsFontScale", "1"));
+        if (!Number.isFinite(newsFontScale) || newsFontScale <= 0) newsFontScale = 1;
+
+        function applyNewsFontScale() {
+          newsFontScale = Math.max(0.7, Math.min(1.8, Number(newsFontScale) || 1));
+          document.documentElement.style.setProperty("--news-font-scale", String(newsFontScale));
+          safeStorageSet("newsFontScale", String(newsFontScale));
+        }
+        applyNewsFontScale();
+
+        /* ===================== Ticker (Fixed + Stable) ===================== */
+
+        function setTickerLoading(message = "Loading tickers...") {
+          const strip = $("#tickerStrip");
+          if (!strip) return;
+          strip.innerHTML = `<div class="ticker-loading"><div class="ticker-loading-spinner"></div><span>${message}</span></div>`;
+        }
+
+        function setTickerError(message) {
+          const strip = $("#tickerStrip");
+          if (!strip) return;
+          strip.innerHTML = `<div class="ticker-loading"><span style="color: var(--accent-red);">${message}</span></div>`;
+        }
+
+        function ensureTickerScriptOnce() {
+          // If already defined, do nothing.
+          if (customElements.get("tv-ticker-tag")) return Promise.resolve();
+
+          // If script tag already present, wait for definition.
+          const existing = document.getElementById(TV_TICKER_SCRIPT_ID);
+          if (existing) {
+            return customElements.whenDefined("tv-ticker-tag");
+          }
+
+          return new Promise((resolve, reject) => {
+            const script = document.createElement("script");
+            script.id = TV_TICKER_SCRIPT_ID;
+            script.type = "module";
+            script.src = TV_TICKER_SCRIPT_URL;
+            script.onload = () => {
+              customElements
+                .whenDefined("tv-ticker-tag")
+                .then(resolve)
+                .catch(() => resolve()); // be resilient
+            };
+            script.onerror = () => reject(new Error("Failed to load ticker script"));
+            document.head.appendChild(script);
+          });
+        }
+
+        function createTickerTags() {
+          const strip = $("#tickerStrip");
+          if (!strip) return;
+
+          strip.textContent = "";
+          const frag = document.createDocumentFragment();
+          for (const symbol of TICKER_SYMBOLS) {
+            const tag = document.createElement("tv-ticker-tag");
+            tag.setAttribute("symbol", symbol);
+            frag.appendChild(tag);
+          }
+          strip.appendChild(frag);
+        }
+
+        // Fit tickers: only on known triggers (no mutation/attribute loops)
+        let fitRaf = 0;
+        let lastFitTs = 0;
+
+        function autoFitTickersNow() {
+          const viewport = $("#tickerViewport");
+          const strip = $("#tickerStrip");
+          if (!viewport || !strip) return;
+
+          // Don't fit if showing loading/error message
+          if (strip.querySelector(".ticker-loading")) return;
+
+          // Throttle hard: no more than ~every 120ms
+          const now = performance.now();
+          if (now - lastFitTs < 120) return;
+          lastFitTs = now;
+
+          strip.style.transform = "scale(1)";
+          const viewportWidth = viewport.clientWidth;
+          const stripWidth = strip.scrollWidth;
+
+          if (!stripWidth || !viewportWidth) return;
+
+          const safety = 0.985;
+          const minScale = 0.6;
+          const maxScale = 1.25;
+          const raw = (viewportWidth / stripWidth) * safety;
+          const scale = Math.max(minScale, Math.min(maxScale, raw));
+          strip.style.transform = `scale(${scale})`;
+        }
+
+        function scheduleTickerFit() {
+          if (fitRaf) return;
+          fitRaf = requestAnimationFrame(() => {
+            fitRaf = 0;
+            autoFitTickersNow();
+          });
+        }
+
+        function startTickerFitBursts() {
+          // run several times after render; avoids continuous loops
+          scheduleTickerFit();
+          setTimeout(scheduleTickerFit, 150);
+          setTimeout(scheduleTickerFit, 400);
+          setTimeout(scheduleTickerFit, 900);
+          setTimeout(scheduleTickerFit, 1600);
+        }
+
+        async function initTickers() {
+          try {
+            setTickerLoading("Loading tickers...");
+            await ensureTickerScriptOnce();
+            createTickerTags();
+
+            // Fit after insertion + after fonts settle
+            startTickerFitBursts();
+            if (document.fonts && document.fonts.ready) {
+              document.fonts.ready.then(() => startTickerFitBursts()).catch(() => {});
+            }
+          } catch (err) {
+            setTickerError("Failed to load tickers. Click refresh to retry.");
+            console.error("Ticker initialization error:", err);
+          }
+        }
+
+        function refreshTickersSoft() {
+          const strip = $("#tickerStrip");
+          if (!strip) return;
+          createTickerTags();
+          startTickerFitBursts();
+        }
+
+        function bindTickerEvents() {
+          const tickerStrip = $("#tickerStrip");
+          if (!tickerStrip) return;
+
+          tickerStrip.addEventListener(
+            "click",
+            (e) => {
+              const path = typeof e.composedPath === "function" ? e.composedPath() : [];
+              const host =
+                path.find((n) => n && n.tagName === "TV-TICKER-TAG") ||
+                (e.target && e.target.closest ? e.target.closest("tv-ticker-tag") : null);
+              if (!host) return;
+
+              const sym = host.getAttribute("symbol");
+              if (sym) scrollToSymbol(sym);
+            },
+            { passive: true }
+          );
+
+          const viewport = $("#tickerViewport");
+          if (window.ResizeObserver && viewport) {
+            const ro = new ResizeObserver(() => scheduleTickerFit());
+            ro.observe(viewport);
+          } else {
+            window.addEventListener("resize", scheduleTickerFit, { passive: true });
+          }
+        }
+
+        /* ===================== Charts ===================== */
+        function injectGridChartWidget(cell) {
+          const theme = getTheme();
+          const symbol = cell.dataset.symbol;
+          const interval = cell.dataset.interval;
+
+          const widgetContainer = document.createElement("div");
+          widgetContainer.className = "tradingview-widget-container";
+          widgetContainer.style.cssText = "height:100%;width:100%;";
+
+          const widgetDiv = document.createElement("div");
+          widgetDiv.className = "tradingview-widget-container__widget";
+          widgetDiv.style.cssText = "height:100%;width:100%;";
+
+          const script = document.createElement("script");
+          script.type = "text/javascript";
+          script.src = "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js";
+          script.async = true;
+          script.textContent = JSON.stringify({
+            autosize: true,
+            symbol,
+            interval,
+            timezone: "Etc/UTC",
+            theme,
+            style: "1",
+            locale: "en",
+            support_host: "https://www.tradingview.com",
+            hide_top_toolbar: true,
+            hide_side_toolbar: true,
+            hide_legend: true,
+            save_image: false,
+            hide_volume: true,
+            studies: [{ id: "MAExp@tv-basicstudies", inputs: { length: 200 } }],
+          });
+
+          widgetContainer.appendChild(widgetDiv);
+          widgetContainer.appendChild(script);
+          cell.appendChild(widgetContainer);
+        }
+
+        function setupChartLoad() {
+          for (const cell of $$(".chart-cell[data-symbol]")) {
+            if (!cell || !cell.isConnected) continue;
+            if (cell.dataset.loaded === "1") continue;
+            cell.dataset.loaded = "1";
+            injectGridChartWidget(cell);
+          }
+        }
+
+        function generateChartGrid() {
+          const main = $("#mainContent");
+          if (!main) return;
+          main.textContent = "";
+
+          const frag = document.createDocumentFragment();
+
+          for (let i = 0; i < SYMBOLS.length; i += 2) {
+            const section = document.createElement("div");
+            section.className = "chart-section";
+            section.id = `section-${Math.floor(i / 2) + 1}`;
+
+            for (let j = 0; j < 2 && i + j < SYMBOLS.length; j++) {
+              const sym = SYMBOLS[i + j];
+              const row = document.createElement("div");
+              row.className = "chart-row";
+              row.dataset.symbol = sym.symbol;
+
+              const anchor = document.createElement("div");
+              anchor.className = "chart-row-anchor";
+              anchor.id = `anchor-${safeIdFromSymbol(sym.symbol)}`;
+              row.appendChild(anchor);
+
+              for (const tf of TIMEFRAMES) {
+                const cell = document.createElement("div");
+                cell.className = "chart-cell";
+                cell.dataset.symbol = sym.symbol;
+                cell.dataset.interval = tf.interval;
+                cell.dataset.loaded = "0";
+
+                const watermark = document.createElement("div");
+                watermark.className = "watermark";
+                watermark.innerHTML = `${sym.name}<span class="tf">${tf.label}</span>`;
+                watermark.addEventListener("click", () => openPopup(sym.symbol, sym.name));
+
+                const tfSquare = document.createElement("div");
+                tfSquare.className = "tf-square";
+                tfSquare.textContent = tf.label;
+                tfSquare.title = `Open ${sym.name} ${tf.label}`;
+                tfSquare.addEventListener("click", (e) => {
+                  e.stopPropagation();
+                  openTfPopup(sym.symbol, sym.name, tf.interval, tf.label);
+                });
+
+                const wmRow = document.createElement("div");
+                wmRow.className = "wm-row";
+                wmRow.appendChild(watermark);
+                wmRow.appendChild(tfSquare);
+
+                cell.appendChild(wmRow);
+                row.appendChild(cell);
+              }
+
+              section.appendChild(row);
+            }
+
+            frag.appendChild(section);
+          }
+
+          main.appendChild(frag);
+          setupChartLoad(); // loads immediately (no lazy loading)
+        }
+
+        /* ===================== Panel Management ===================== */
+        const panel = $("#sidePanel");
+        const panelTitle = $("#panelTitle");
+        const panelBody = $("#panelBody");
+        let currentPanel = null;
+
+        const content = {
+          calendar: {
+            title: "Calendar",
+            icon: '<svg class="icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>',
+            html: `
+              <div class="calendar-container">
+                <div class="calendar-section"><div id="economic-calendar-widget"></div></div>
+                <div class="sessions-section">
+                  <div id="localClock" class="local-clock"></div>
+                  <div id="sessionContainer"></div>
+                  <div class="hour-labels" id="hourLabels"></div>
+                </div>
+              </div>
+            `,
+          },
+          news: {
+            title: "News",
+            icon: '<svg class="icon" viewBox="0 0 24 24"><path d="M4 22h16a2 2 0 002-2V4a2 2 0 00-2-2H8a2 2 0 00-2 2v16a2 2 0 01-2 2zm0 0a2 2 0 01-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M10 6h8M10 10h8M10 14h4"/></svg>',
+            html: `
+              <div class="news-container" id="newsContainer">
+                <div class="news-header">
+                  <div class="news-header-top">
+                    <div class="news-status-wrap" id="newsStatusWrap">
+                      <span id="newsStatusText">Loading...</span>
+                      <span id="sourceFilters"></span>
+                    </div>
+
+                    <div class="news-controls">
+                      <button id="fontDown" class="news-btn" title="Decrease font" aria-label="Decrease font">A-</button>
+                      <button id="fontUp" class="news-btn" title="Increase font" aria-label="Increase font">A+</button>
+                      <button id="refreshNews" class="news-btn" aria-label="Refresh news">↻ Refresh</button>
+                    </div>
+                  </div>
+
+                  <div class="quickbar" aria-label="Search">
+                    <div class="search-wrap">
+                      <input
+                        id="newsSearch"
+                        class="search-input"
+                        type="text"
+                        placeholder="Filter: EURUSD, Gold, CPI, Powell… (comma-separated)"
+                        autocomplete="off"
+                        spellcheck="false"
+                      />
+                      <span class="search-hint" id="searchHint">Tip: multiple terms = AND</span>
+                    </div>
+                  </div>
+                </div>
+
+                <ul id="newsList" class="news-list" aria-label="News list"></ul>
+              </div>
+            `,
+          },
+          heatmap: {
+            title: "Forex Heatmap",
+            icon: '<svg class="icon" viewBox="0 0 24 24"><path d="M12 2s2.8 3 2.8 6.2c0 1.4-.6 2.6-1.4 3.5-.9 1-2 1.9-2 3.6 0 1.7 1.3 3 3 3 2.6 0 4.6-2.2 4.6-5.1 0-2.2-1.1-4-2.5-5.6"/><path d="M10.4 7.2S7.6 9.8 7.6 13c0 2.9 2 5 4.7 5 1.9 0 3.4-1.4 3.4-3.3 0-1.3-.7-2.2-1.5-3.1-.7-.8-1.4-1.6-1.4-2.8"/></svg>',
+            html: `
+              <div class="heatmap-wrap"><div id="heatmapWidget"></div></div>
+            `,
+          },
+        };
+
+        function setPanelOpen(isOpen) {
+          if (!panel) return;
+          panel.classList.toggle("open", isOpen);
+          panel.setAttribute("aria-hidden", String(!isOpen));
+        }
+
+        function closePanel() {
+          cleanupPanelSideEffects();
+          setPanelOpen(false);
+          currentPanel = null;
+          for (const b of $$(".dock-btn[data-panel]")) b.classList.remove("active");
+        }
+
+        function renderNewsTabsInTitle() {
+          // Title area tabs beside "News"
+          return `
+            <div class="panel-tabs" id="newsTabs" aria-label="News tabs">
+              <button class="tab-btn" type="button" data-tab="news">News</button>
+              <button class="tab-btn" type="button" data-tab="forex">Forex</button>
+              <button class="tab-btn" type="button" data-tab="crypto">Crypto</button>
+              <button class="tab-btn" type="button" data-tab="arabic">Arabic</button>
+            </div>
+          `;
+        }
+
+        function openPanel(key) {
+          const data = content[key];
+          if (!data || !panel || !panelTitle || !panelBody) return;
+
+          if (currentPanel === key) {
+            closePanel();
+            return;
+          }
+
+          cleanupPanelSideEffects();
+          setPanelOpen(true);
+
+          if (key === "news") {
+            panelTitle.innerHTML = `${data.icon}<span>News</span>${renderNewsTabsInTitle()}`;
+          } else {
+            panelTitle.innerHTML = `${data.icon}<span>${data.title}</span>`;
+          }
+
+          panelBody.innerHTML = data.html;
+          currentPanel = key;
+
+          for (const b of $$(".dock-btn[data-panel]")) {
+            b.classList.toggle("active", b.dataset.panel === key);
+          }
+
+          if (key === "news") initNewsPanel();
+          if (key === "calendar") initCalendarPanel();
+          if (key === "heatmap") initHeatmapPanel();
+        }
+
+        /* ===================== Panel Side-Effect Cleanup ===================== */
+        let calendarSessionsInterval = 0;
+        let calendarClockInterval = 0;
+        let newsIntervalId = 0;
+        let newsAbortController = null;
+
+        function cleanupPanelSideEffects() {
+          if (calendarSessionsInterval) clearInterval(calendarSessionsInterval);
+          if (calendarClockInterval) clearInterval(calendarClockInterval);
+          calendarSessionsInterval = 0;
+          calendarClockInterval = 0;
+
+          if (newsIntervalId) clearInterval(newsIntervalId);
+          newsIntervalId = 0;
+
+          if (newsAbortController) {
+            try {
+              newsAbortController.abort();
+            } catch {}
+          }
+          newsAbortController = null;
+        }
+
+        /* ===================== Dock bindings ===================== */
+        function toggleTheme() {
+          const current = getTheme();
+          const next = current === "dark" ? "light" : "dark";
+          document.documentElement.setAttribute("data-theme", next);
+          safeStorageSet("theme", next);
+
+          updateThemeIcon();
+
+          closePopup();
+          closeTfPopup();
+          generateChartGrid();
+
+          if (currentPanel) {
+            const p = currentPanel;
+            currentPanel = null;
+            openPanel(p);
+          }
+
+          refreshTickersSoft();
+        }
+
+        function bindDock() {
+          const dock = $("#dock");
+          if (!dock) return;
+
+          dock.addEventListener("click", (e) => {
+            const btn = e.target.closest(".dock-btn");
+            if (!btn) return;
+
+            if (btn.dataset.panel) {
+              openPanel(btn.dataset.panel);
+              return;
+            }
+            if (btn.dataset.action === "refresh") {
+              location.reload();
+              return;
+            }
+            if (btn.dataset.action === "theme") {
+              toggleTheme();
+              return;
+            }
+          });
+
+          const closeBtn = $("#closePanel");
+          if (closeBtn) closeBtn.addEventListener("click", closePanel);
+
+          updateThemeIcon();
+        }
+
+        /* ===================== Calendar panel ===================== */
+        let fxVerifyScriptLoaded = false;
+        let fxVerifyScriptLoading = false;
+
+        function loadFxVerifyScript(cb) {
+          if (fxVerifyScriptLoaded) {
+            cb();
+            return;
+          }
+          if (fxVerifyScriptLoading) {
+            const t = setInterval(() => {
+              if (fxVerifyScriptLoaded) {
+                clearInterval(t);
+                cb();
+              }
+            }, 50);
+            return;
+          }
+          fxVerifyScriptLoading = true;
+          const existing = document.getElementById("fxVerifyCalendarScript");
+          if (existing) {
+            fxVerifyScriptLoaded = true;
+            fxVerifyScriptLoading = false;
+            cb();
+            return;
+          }
+          const script = document.createElement("script");
+          script.id = "fxVerifyCalendarScript";
+          script.src = "https://fxverify.com/Content/remote/remote-calendar-widget.js";
+          script.onload = () => {
+            fxVerifyScriptLoaded = true;
+            fxVerifyScriptLoading = false;
+            cb();
+          };
+          script.onerror = () => {
+            fxVerifyScriptLoading = false;
+          };
+          document.head.appendChild(script);
+        }
+
+        function initCalendarPanel() {
+          const sessions = [
+            { id: "sydney", name: "Sydney", startUTC: 22, endUTC: 7, timezone: "Australia/Sydney" },
+            { id: "tokyo", name: "Tokyo", startUTC: 0, endUTC: 9, timezone: "Asia/Tokyo" },
+            { id: "london", name: "London", startUTC: 8, endUTC: 16, timezone: "Europe/London" },
+            { id: "newyork", name: "New York", startUTC: 13, endUTC: 22, timezone: "America/New_York" },
+          ];
+
+          function getTimezoneOffsetHours() {
+            return -new Date().getTimezoneOffset() / 60;
+          }
+          function isSessionOpen(session) {
+            const now = new Date();
+            const utcHour = now.getUTCHours() + now.getUTCMinutes() / 60;
+            if (session.startUTC > session.endUTC) return utcHour >= session.startUTC || utcHour < session.endUTC;
+            return utcHour >= session.startUTC && utcHour < session.endUTC;
+          }
+          function isWeekend() {
+            const now = new Date();
+            const day = now.getUTCDay();
+            const hour = now.getUTCHours();
+            if (day === 6) return true;
+            if (day === 0 && hour < 22) return true;
+            if (day === 5 && hour >= 22) return true;
+            return false;
+          }
+          function getLocalTime(timezone) {
+            return new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: timezone });
+          }
+          function renderClock() {
+            const clock = $("#localClock");
+            if (!clock) return;
+            clock.textContent = new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true });
+          }
+          function renderHourLabels() {
+            const container = $("#hourLabels");
+            if (!container) return;
+            container.textContent = "";
+            for (let i = 0; i <= 24; i += 4) {
+              const span = document.createElement("span");
+              span.textContent = String(i % 24).padStart(2, "0");
+              container.appendChild(span);
+            }
+          }
+          function renderSessions() {
+            const container = $("#sessionContainer");
+            if (!container) return;
+            container.textContent = "";
+
+            const offset = getTimezoneOffsetHours();
+            for (const session of sessions) {
+              const open = isSessionOpen(session) && !isWeekend();
+              const localTime = getLocalTime(session.timezone);
+
+              let startLocal = (session.startUTC + offset) % 24;
+              let endLocal = (session.endUTC + offset) % 24;
+              if (startLocal < 0) startLocal += 24;
+              if (endLocal < 0) endLocal += 24;
+
+              const row = document.createElement("div");
+              row.className = "session-row";
+
+              const label = document.createElement("div");
+              label.className = "session-label";
+              const name = document.createElement("span");
+              name.textContent = session.name;
+              const time = document.createElement("span");
+              time.className = "time";
+              time.textContent = localTime;
+              label.appendChild(name);
+              label.appendChild(time);
+
+              const barContainer = document.createElement("div");
+              barContainer.className = "session-bar-container";
+
+              const startPercent = (startLocal / 24) * 100;
+              const endPercent = (endLocal / 24) * 100;
+
+              if (startLocal > endLocal) {
+                const a = document.createElement("div");
+                a.className = `session-bar ${session.id} ${open ? "" : "inactive"}`;
+                a.style.cssText = `left:${startPercent}%;width:${100 - startPercent}%;border-radius:3px 0 0 3px;`;
+                const b = document.createElement("div");
+                b.className = `session-bar ${session.id} ${open ? "" : "inactive"}`;
+                b.style.cssText = `left:0;width:${endPercent}%;border-radius:0 3px 3px 0;`;
+                barContainer.appendChild(a);
+                barContainer.appendChild(b);
+              } else {
+                const bar = document.createElement("div");
+                bar.className = `session-bar ${session.id} ${open ? "" : "inactive"}`;
+                bar.style.cssText = `left:${startPercent}%;width:${endPercent - startPercent}%;border-radius:3px;`;
+                barContainer.appendChild(bar);
+              }
+
+              const now = new Date();
+              const localHour = now.getHours() + now.getMinutes() / 60;
+              const markerPercent = (localHour / 24) * 100;
+              const marker = document.createElement("div");
+              marker.className = "time-marker";
+              marker.style.left = `${markerPercent}%`;
+              marker.setAttribute("data-time", now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false }));
+              barContainer.appendChild(marker);
+
+              row.appendChild(label);
+              row.appendChild(barContainer);
+              container.appendChild(row);
+            }
+          }
+
+          renderHourLabels();
+          renderClock();
+          renderSessions();
+
+          calendarClockInterval = setInterval(renderClock, 1000);
+          calendarSessionsInterval = setInterval(renderSessions, 60000);
+
+          const theme = getTheme();
+          const calContainer = $("#economic-calendar-widget");
+          if (calContainer) calContainer.textContent = "";
+
+          loadFxVerifyScript(() => {
+            if (typeof RemoteCalendar !== "undefined") {
+              RemoteCalendar({
+                DefaultTime: "today",
+                DefaultTheme: theme === "dark" ? "dark" : "plain",
+                Url: "https://fxverify.com",
+                SubPath: "economic-calendar",
+                IsShowEmbedButton: false,
+                DefaultCountries: "AU,CA,CH,CN,DE,FR,IT,ES,US,GB,NZ,JP,EU",
+                DefaultImpacts: "HIGH",
+                ContainerId: "economic-calendar-widget",
+              });
+            }
+          });
+        }
+
+        /* ===================== News panel (REPLACED with new full version) ===================== */
+        function initNewsPanel() {
+          const TAB_FEEDS = {
+            news: [
+              { name: "InvestingLive", kind: "News", url: "https://investinglive.com/feed/news/" },
+              { name: "InvestingLive", kind: "Central Banks", url: "https://investinglive.com/feed/centralbank/" },
+            ],
+            forex: [
+              { name: "FXStreet", kind: "News", url: "https://www.fxstreet.com/rss/news" },
+              { name: "FXStreet", kind: "Analysis", url: "https://www.fxstreet.com/rss/analysis" },
+            ],
+            crypto: [{ name: "FXStreet", kind: "Crypto", url: "https://www.fxstreet.com/rss/crypto" }],
+            arabic: [{ name: "FXStreet", kind: "News", url: "https://ar.fxstreet.com/rss/news" }],
+          };
+
+          // Cache & limits
+          const CACHE_TTL_MS = 45 * 1000;
+          const MAX_ITEMS_PER_FEED = 100;
+
+          // Requested meta format: 14/01/26, 14:20
+          const dateFmtWithTime = new Intl.DateTimeFormat("en-GB", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+
+          // Persisted state per tab
+          let currentTab = safeStorageGet("newsTab", "news") || "news";
+          if (!TAB_FEEDS[currentTab]) currentTab = "news";
+
+          let currentKindFilter = safeStorageGet("newsKindFilter:" + currentTab, "ALL") || "ALL";
+          let currentTextFilter = safeStorageGet("newsTextFilter:" + currentTab, "") || "";
+
+          // Progressive load token
+          let activeLoadToken = 0;
+
+          // Cache by tab
+          const tabItemsCache = new Map();
+
+          // Favorites
+          const FAV_KEY = "newsFavorites";
+          function loadFavorites() {
+            try {
+              const raw = safeStorageGet(FAV_KEY, "[]");
+              const arr = JSON.parse(raw);
+              return new Set(Array.isArray(arr) ? arr : []);
+            } catch {
+              return new Set();
+            }
+          }
+          function saveFavorites(set) {
+            try {
+              safeStorageSet(FAV_KEY, JSON.stringify(Array.from(set)));
+            } catch {}
+          }
+          let favorites = loadFavorites();
+          function isFavorited(link) {
+            return favorites.has(link);
+          }
+          function toggleFavorite(link) {
+            if (!link || link === "#") return;
+            if (favorites.has(link)) favorites.delete(link);
+            else favorites.add(link);
+            saveFavorites(favorites);
+          }
+
+          function setNewsRtl(isRtl) {
+            const container = $("#newsContainer");
+            if (!container) return;
+            container.classList.toggle("rtl", !!isRtl);
+            container.setAttribute("dir", isRtl ? "rtl" : "ltr");
+            container.setAttribute("lang", isRtl ? "ar" : "en");
+          }
+
+          function stripHtml(html) {
+            const doc = new DOMParser().parseFromString(html || "", "text/html");
+            return (doc.body.textContent || "").replace(/\s+/g, " ").trim();
+          }
+          function truncate(text, maxLen = 300) {
+            if (!text || text.length <= maxLen) return text;
+            return text.slice(0, maxLen - 1).trimEnd() + "…";
+          }
+          function safeUrl(url) {
+            try {
+              const u = new URL(url, location.href);
+              if (u.protocol !== "http:" && u.protocol !== "https:") return "#";
+              return u.toString();
+            } catch {
+              return "#";
+            }
+          }
+          function parsePubDate(pubDateText) {
+            const d = pubDateText ? new Date(pubDateText) : new Date(0);
+            return Number.isNaN(d.getTime()) ? new Date(0) : d;
+          }
+
+          function makeItemKey(it) {
+            return `${it.link}||${it.title}`.toLowerCase();
+          }
+          function dedupeItems(items) {
+            const seen = new Set();
+            const out = [];
+            for (const it of items) {
+              const key = makeItemKey(it);
+              if (seen.has(key)) continue;
+              seen.add(key);
+              out.push(it);
+            }
+            return out;
+          }
+          function mergeAndSort(existing, incoming) {
+            const merged = dedupeItems(existing.concat(incoming));
+            merged.sort((a, b) => b.pubDate - a.pubDate);
+            return merged;
+          }
+          function uniqFeedsByUrl(feeds) {
+            const map = new Map();
+            for (const f of feeds) if (!map.has(f.url)) map.set(f.url, f);
+            return Array.from(map.values());
+          }
+
+          // Promise.any polyfill
+          function promiseAny(promises) {
+            if (Promise.any) return Promise.any(promises);
+            return new Promise((resolve, reject) => {
+              let pending = promises.length;
+              const errors = [];
+              if (!pending) return reject(new AggregateError([], "All promises were rejected"));
+              promises.forEach((p, i) => {
+                Promise.resolve(p)
+                  .then(resolve)
+                  .catch((e) => {
+                    errors[i] = e;
+                    pending--;
+                    if (!pending) reject(new AggregateError(errors, "All promises were rejected"));
+                  });
+              });
+            });
+          }
+
+          function linkAbort(srcSignal, controller) {
+            if (!srcSignal) return () => {};
+            const onAbort = () => {
+              try {
+                controller.abort();
+              } catch {}
+            };
+            if (srcSignal.aborted) onAbort();
+            else srcSignal.addEventListener("abort", onAbort, { once: true });
+            return () => {
+              try {
+                srcSignal.removeEventListener("abort", onAbort);
+              } catch {}
+            };
+          }
+
+          async function fetchTextFast(url, { signal } = {}) {
+            const attempts = [
+              { label: "direct", url },
+              { label: "allorigins", url: "https://api.allorigins.win/raw?url=" + encodeURIComponent(url) },
+              { label: "codetabs", url: "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(url) },
+            ];
+
+            const controllers = attempts.map(() => new AbortController());
+            const unsubs = controllers.map((c) => linkAbort(signal, c));
+
+            function fetchAttempt(i) {
+              const timeoutMs = attempts[i].label === "direct" ? 4500 : 6500;
+              const c = controllers[i];
+
+              const timeout = setTimeout(() => {
+                try {
+                  c.abort();
+                } catch {}
+              }, timeoutMs);
+
+              return fetch(attempts[i].url, { cache: "no-store", signal: c.signal })
+                .then((res) => {
+                  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                  return res.text();
+                })
+                .finally(() => clearTimeout(timeout));
+            }
+
+            const promises = attempts.map((_, i) => fetchAttempt(i));
+
+            try {
+              const text = await promiseAny(promises);
+              controllers.forEach((c) => {
+                try {
+                  c.abort();
+                } catch {}
+              });
+              unsubs.forEach((u) => u());
+              return text;
+            } catch {
+              unsubs.forEach((u) => u());
+              throw new Error("Failed to fetch feed (CORS/proxy)");
+            }
+          }
+
+          function pickTopN(items, n) {
+            return Array.isArray(items) ? items.slice(0, Math.max(0, n | 0)) : [];
+          }
+
+          async function fetchAndParseRSS(feed, signal, maxItemsPerFeed = 100) {
+            const xmlText = await fetchTextFast(feed.url, { signal });
+            const doc = new DOMParser().parseFromString(xmlText, "text/xml");
+            if (doc.querySelector("parsererror")) throw new Error("RSS parse error");
+
+            const items = Array.from(doc.querySelectorAll("item"));
+            const parsed = items
+              .map((item) => {
+                const title = item.querySelector("title")?.textContent?.trim() ?? "(no title)";
+                const link = safeUrl(item.querySelector("link")?.textContent?.trim() ?? "#");
+                const pubDateText = item.querySelector("pubDate")?.textContent?.trim() ?? "";
+                const pubDate = parsePubDate(pubDateText);
+
+                const rawDesc =
+                  item.querySelector("description")?.textContent ??
+                  item.querySelector("content\\:encoded")?.textContent ??
+                  "";
+
+                const description = truncate(stripHtml(rawDesc), 300);
+
+                return {
+                  source: feed.name,
+                  kind: feed.kind || "",
+                  title,
+                  link,
+                  pubDate,
+                  description,
+                };
+              })
+              .filter((x) => x.pubDate instanceof Date && !Number.isNaN(x.pubDate.getTime()));
+
+            parsed.sort((a, b) => b.pubDate - a.pubDate);
+            return pickTopN(parsed, maxItemsPerFeed);
+          }
+
+          // Search filter helpers
+          function normalizeToken(s) {
+            return String(s || "")
+              .toUpperCase()
+              .replace(/[^A-Z0-9\u0600-\u06FF]+/g, "");
+          }
+          function buildSearchBlob(item) {
+            const t = item?.title || "";
+            const d = item?.description || "";
+            return normalizeToken(t + " " + d);
+          }
+          function parseTextTerms(text) {
+            const raw = String(text || "").trim();
+            if (!raw) return [];
+            return raw
+              .split(",")
+              .map((x) => x.trim())
+              .filter(Boolean)
+              .slice(0, 12);
+          }
+          function matchTextTerms(item, terms) {
+            if (!terms.length) return true;
+            const blob = buildSearchBlob(item);
+            return terms.every((t) => blob.includes(normalizeToken(t)));
+          }
+          function filterItems(items) {
+            let out = items || [];
+
+            // Arabic: no kind filter
+            if (currentTab !== "arabic" && currentKindFilter && currentKindFilter !== "ALL") {
+              out = out.filter((x) => String(x.kind || "").toLowerCase() === String(currentKindFilter).toLowerCase());
+            }
+
+            const terms = parseTextTerms(currentTextFilter);
+            if (terms.length) out = out.filter((x) => matchTextTerms(x, terms));
+
+            return out;
+          }
+
+          function isNewItem(pubDate, hours = 6) {
+            if (!(pubDate instanceof Date)) return false;
+            const ageMs = Date.now() - pubDate.getTime();
+            return ageMs >= 0 && ageMs <= hours * 60 * 60 * 1000;
+          }
+
+          function render(items) {
+            const list = $("#newsList");
+            if (!list) return;
+            list.textContent = "";
+
+            for (const it of items) {
+              const li = document.createElement("li");
+              li.className = "news-item";
+
+              const titleRow = document.createElement("div");
+              titleRow.className = "news-title-row";
+
+              const a = document.createElement("a");
+              a.href = it.link;
+              a.target = "_blank";
+              a.rel = "noopener noreferrer";
+              a.textContent = it.title;
+              titleRow.appendChild(a);
+
+              if (it.kind) {
+                const tag = document.createElement("span");
+                tag.className = "news-tag";
+                tag.textContent = it.kind;
+                titleRow.appendChild(tag);
+              }
+
+              if (isNewItem(it.pubDate, 6)) {
+                const nb = document.createElement("span");
+                nb.className = "badge-new";
+                nb.textContent = "NEW";
+                titleRow.appendChild(nb);
+              }
+
+              const meta = document.createElement("span");
+              meta.className = "news-meta";
+              meta.textContent = `${it.source} • ${dateFmtWithTime.format(it.pubDate)}`;
+              titleRow.appendChild(meta);
+
+              const star = document.createElement("button");
+              star.className = "star-btn" + (isFavorited(it.link) ? " active" : "");
+              star.title = isFavorited(it.link) ? "Remove from favorites" : "Add to favorites";
+              star.setAttribute("aria-label", "Toggle favorite");
+              star.innerHTML = `
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 17.27l5.18 3.04-1.39-5.97L20 9.24l-6.19-.53L12 3 10.19 8.71 4 9.24l4.21 5.1-1.39 5.97L12 17.27z"></path>
+                </svg>
+              `;
+              star.addEventListener("click", (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                toggleFavorite(it.link);
+                applyRenderFromCacheOrCurrent(false);
+              });
+              titleRow.appendChild(star);
+
+              li.appendChild(titleRow);
+
+              if (it.description) {
+                const p = document.createElement("p");
+                p.className = "news-desc";
+                p.textContent = it.description;
+                li.appendChild(p);
+              }
+
+              list.appendChild(li);
+            }
+          }
+
+          function updateStatusLine(allItems, completed, total, startedAt) {
+            const statusText = $("#newsStatusText");
+            if (!statusText) return;
+            const secs = startedAt ? ((Date.now() - startedAt) / 1000).toFixed(1) : "0.0";
+            const filtered = filterItems(allItems || []);
+            statusText.textContent = `${filtered.length}/${(allItems || []).length} items • ${completed}/${total} feeds • ${secs}s`;
+          }
+
+          function setLoadingUi(message = "Loading...") {
+            const t = $("#newsStatusText");
+            const list = $("#newsList");
+            if (t) t.textContent = message;
+            if (list) list.textContent = "";
+          }
+
+          // Yellow filter tags beside status line (News/Forex etc). No filters for Arabic.
+          function renderSourceFilters() {
+            const host = $("#sourceFilters");
+            if (!host) return;
+            host.textContent = "";
+
+            if (currentTab === "arabic") return;
+
+            const feeds = TAB_FEEDS[currentTab] || [];
+            const kinds = Array.from(new Set(feeds.map((f) => f.kind).filter(Boolean)));
+            if (kinds.length <= 1) return;
+
+            const allTag = document.createElement("span");
+            allTag.className = "news-tag clickable" + (currentKindFilter === "ALL" ? " active" : "");
+            allTag.textContent = "All";
+            allTag.title = "Show all sources";
+            allTag.addEventListener("click", () => setKindFilter("ALL"));
+            host.appendChild(allTag);
+
+            for (const k of kinds) {
+              const tag = document.createElement("span");
+              tag.className = "news-tag clickable" + (currentKindFilter === k ? " active" : "");
+              tag.textContent = k;
+              tag.title = `Show ${k}`;
+              tag.addEventListener("click", () => setKindFilter(k));
+              host.appendChild(tag);
+            }
+          }
+
+          function setKindFilter(kind) {
+            currentKindFilter = kind || "ALL";
+            safeStorageSet("newsKindFilter:" + currentTab, currentKindFilter);
+            renderSourceFilters();
+            applyRenderFromCacheOrCurrent(true);
+          }
+
+          function syncSearchUi() {
+            const input = $("#newsSearch");
+            if (input) input.value = currentTextFilter || "";
+
+            const hint = $("#searchHint");
+            const terms = parseTextTerms(currentTextFilter);
+            if (hint) hint.textContent = terms.length ? `Terms: ${terms.join(", ")} (AND)` : "Tip: multiple terms = AND";
+          }
+
+          function applyRenderFromCacheOrCurrent(scrollTop = false) {
+            const cached = tabItemsCache.get(currentTab);
+            if (!cached || !Array.isArray(cached.items)) return;
+
+            const filtered = filterItems(cached.items);
+            render(filtered);
+            updateStatusLine(cached.items, cached.completedFeeds || 0, cached.totalFeeds || 0, cached.startedAt || 0);
+
+            if (scrollTop) {
+              const list = $("#newsList");
+              if (list) list.scrollTo({ top: 0, behavior: "smooth" });
+            }
+          }
+
+          async function loadAndRender({ force = false } = {}) {
+            const myToken = ++activeLoadToken;
+
+            const existing = tabItemsCache.get(currentTab);
+            if (!force && existing?.fetchedAt && Date.now() - existing.fetchedAt < CACHE_TTL_MS) {
+              applyRenderFromCacheOrCurrent(false);
+              return;
+            }
+
+            setLoadingUi("Loading...");
+            renderSourceFilters();
+            syncSearchUi();
+
+            if (newsAbortController) {
+              try {
+                newsAbortController.abort();
+              } catch {}
+            }
+            newsAbortController = new AbortController();
+
+            const startedAt = Date.now();
+            const feedsRaw = TAB_FEEDS[currentTab] || TAB_FEEDS.news;
+            const feeds = uniqFeedsByUrl(feedsRaw);
+
+            let aggregated = [];
+            let completed = 0;
+
+            tabItemsCache.set(currentTab, {
+              items: [],
+              completedFeeds: 0,
+              totalFeeds: feeds.length,
+              startedAt,
+              fetchedAt: Date.now(),
+            });
+
+            updateStatusLine(aggregated, completed, feeds.length, startedAt);
+
+            const tasks = feeds.map(async (f) => {
+              try {
+                const parsed = await fetchAndParseRSS(f, newsAbortController.signal, MAX_ITEMS_PER_FEED);
+                if (myToken !== activeLoadToken) return;
+
+                aggregated = mergeAndSort(aggregated, parsed);
+
+                const cached = tabItemsCache.get(currentTab);
+                if (cached) {
+                  cached.items = aggregated;
+                  cached.totalFeeds = feeds.length;
+                  cached.startedAt = startedAt;
+                  cached.fetchedAt = Date.now();
+                }
+
+                applyRenderFromCacheOrCurrent(false);
+              } catch {
+                // ignore per-feed failure
+              } finally {
+                completed++;
+                if (myToken !== activeLoadToken) return;
+
+                const cached = tabItemsCache.get(currentTab);
+                if (cached) cached.completedFeeds = completed;
+
+                updateStatusLine(aggregated, completed, feeds.length, startedAt);
+              }
+            });
+
+            await Promise.allSettled(tasks);
+
+            if (myToken !== activeLoadToken) return;
+
+            if (!aggregated.length) {
+              const statusText = $("#newsStatusText");
+              if (statusText) statusText.textContent = "Error: feeds did not load (CORS/proxy). Try Refresh.";
+              const list = $("#newsList");
+              if (list) {
+                list.innerHTML = `
+                  <li class="news-item">
+                    <div class="news-title-row">
+                      <span style="color: var(--accent-red); font-weight: 800;">No items loaded</span>
+                      <span class="news-meta">Try Refresh</span>
+                    </div>
+                    <p class="news-desc">
+                      Some RSS endpoints (especially Arabic) may intermittently block browser/proxy access.
+                      This panel tries direct + two proxies with timeouts to prevent “forever loading”.
+                    </p>
+                  </li>
+                `;
+              }
+            }
+          }
+
+          function setActiveTab(tabKey) {
+            currentTab = tabKey;
+            safeStorageSet("newsTab", tabKey);
+
+            currentTextFilter = safeStorageGet("newsTextFilter:" + currentTab, "") || "";
+
+            // Arabic: always ALL (no filters)
+            if (tabKey === "arabic") currentKindFilter = "ALL";
+            else currentKindFilter = safeStorageGet("newsKindFilter:" + currentTab, "ALL") || "ALL";
+
+            // Direction + placeholder
+            setNewsRtl(tabKey === "arabic");
+            const input = $("#newsSearch");
+            if (input) {
+              input.placeholder =
+                tabKey === "arabic"
+                  ? "فلتر: EURUSD, الذهب, CPI… (افصل بفاصلة ,)"
+                  : "Filter: EURUSD, Gold, CPI, Powell… (comma-separated)";
+            }
+
+            // Activate button UI
+            for (const b of $$("#newsTabs .tab-btn")) b.classList.toggle("active", b.dataset.tab === tabKey);
+
+            renderSourceFilters();
+            syncSearchUi();
+          }
+
+          function bindTabs() {
+            const tabs = $("#newsTabs");
+            if (!tabs) return;
+
+            tabs.addEventListener(
+              "click",
+              (e) => {
+                const btn = e.target.closest(".tab-btn");
+                if (!btn) return;
+                const tab = btn.dataset.tab;
+                if (!tab || tab === currentTab) return;
+
+                setActiveTab(tab);
+
+                if (newsIntervalId) clearInterval(newsIntervalId);
+                loadAndRender({ force: false });
+                newsIntervalId = setInterval(() => loadAndRender({ force: false }), 60000);
+              },
+              { passive: true }
+            );
+          }
+
+          // Bind controls
+          $("#refreshNews")?.addEventListener(
+            "click",
+            () => {
+              tabItemsCache.delete(currentTab);
+              loadAndRender({ force: true });
+            },
+            { passive: true }
+          );
+
+          $("#fontDown")?.addEventListener(
+            "click",
+            () => {
+              newsFontScale -= 0.1;
+              applyNewsFontScale();
+            },
+            { passive: true }
+          );
+
+          $("#fontUp")?.addEventListener(
+            "click",
+            () => {
+              newsFontScale += 0.1;
+              applyNewsFontScale();
+            },
+            { passive: true }
+          );
+
+          const input = $("#newsSearch");
+          if (input) {
+            input.addEventListener("input", () => {
+              currentTextFilter = input.value || "";
+              safeStorageSet("newsTextFilter:" + currentTab, currentTextFilter);
+              syncSearchUi();
+              applyRenderFromCacheOrCurrent(false);
+            });
+
+            // Shortcut: "/" focuses search
+            document.addEventListener("keydown", (e) => {
+              if (String(e.key) === "/" && !e.ctrlKey && !e.metaKey && !e.altKey) {
+                const tag = e.target && e.target.tagName ? e.target.tagName : "";
+                if (tag !== "INPUT" && tag !== "TEXTAREA") {
+                  e.preventDefault();
+                  input.focus();
+                }
+              }
+            });
+          }
+
+          // Init
+          bindTabs();
+          setActiveTab(currentTab);
+          loadAndRender({ force: false });
+          newsIntervalId = setInterval(() => loadAndRender({ force: false }), 60000);
+        }
+
+        /* ===================== Heatmap panel ===================== */
+        function initHeatmapPanel() {
+          const theme = getTheme();
+          const container = $("#heatmapWidget");
+          if (!container) return;
+          container.textContent = "";
+
+          const wrap = document.createElement("div");
+          wrap.className = "tradingview-widget-container";
+          wrap.style.cssText = "height:100%;width:100%;";
+
+          const script = document.createElement("script");
+          script.type = "text/javascript";
+          script.src = "https://s3.tradingview.com/external-embedding/embed-widget-forex-heat-map.js";
+          script.async = true;
+
+          const isLight = theme === "light";
+          script.textContent = JSON.stringify({
+            colorTheme: isLight ? "light" : "dark",
+            isTransparent: false,
+            locale: "en",
+            support_host: "https://www.tradingview.com",
+            currencies: ["EUR", "USD", "JPY", "GBP", "CHF", "AUD", "CAD", "NZD"],
+            backgroundColor: isLight ? "#ffffff" : "#111827",
+            width: "100%",
+            height: "100%",
+          });
+
+          wrap.appendChild(script);
+          container.appendChild(wrap);
+        }
+
+        /* ===================== Modals ===================== */
+        function injectWidget(containerId, symbol, interval, theme) {
+          const container = document.getElementById(containerId);
+          if (!container) return;
+          container.textContent = "";
+
+          const widgetContainer = document.createElement("div");
+          widgetContainer.className = "tradingview-widget-container";
+          widgetContainer.style.cssText = "height:100%;width:100%;";
+
+          const widgetDiv = document.createElement("div");
+          widgetDiv.className = "tradingview-widget-container__widget";
+          widgetDiv.style.cssText = "height:100%;width:100%;";
+
+          const script = document.createElement("script");
+          script.type = "text/javascript";
+          script.src = "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js";
+          script.async = true;
+
+          script.textContent = JSON.stringify({
+            autosize: true,
+            symbol,
+            interval,
+            timezone: "Etc/UTC",
+            theme,
+            style: "1",
+            locale: "en",
+            support_host: "https://www.tradingview.com",
+            hide_top_toolbar: false,
+            hide_side_toolbar: false,
+            hide_legend: false,
+            allow_symbol_change: true,
+            save_image: false,
+            calendar: false,
+            hide_volume: true,
+            studies: [{ id: "MAExp@tv-basicstudies", inputs: { length: 200 } }],
+          });
+
+          widgetContainer.appendChild(widgetDiv);
+          widgetContainer.appendChild(script);
+          container.appendChild(widgetContainer);
+        }
+
+        function openPopup(symbol, name) {
+          $("#modalSymbol").textContent = name || symbol;
+          const theme = getTheme();
+          injectWidget("popupLeft", symbol, "15", theme);
+          injectWidget("popupRightTop", symbol, "60", theme);
+          injectWidget("popupRightBottom", symbol, "240", theme);
+          $("#chartModal").style.display = "block";
+        }
+
+        function closePopup() {
+          const modal = $("#chartModal");
+          if (modal) modal.style.display = "none";
+          for (const id of ["popupLeft", "popupRightTop", "popupRightBottom"]) {
+            const el = document.getElementById(id);
+            if (el) el.textContent = "";
+          }
+        }
+
+        function openTfPopup(symbol, name, interval, tfLabel) {
+          const theme = getTheme();
+          $("#tfModalSymbol").textContent = `${name || symbol} • ${tfLabel || interval}`;
+          injectWidget("tfPopupMain", symbol, interval, theme);
+          $("#tfChartModal").style.display = "block";
+        }
+
+        function closeTfPopup() {
+          const modal = $("#tfChartModal");
+          if (modal) modal.style.display = "none";
+          const el = $("#tfPopupMain");
+          if (el) el.textContent = "";
+        }
+
+        function bindModalClose() {
+          const chartModal = $("#chartModal");
+          const tfModal = $("#tfChartModal");
+          $("#closeChartModal")?.addEventListener("click", closePopup);
+          $("#closeTfChartModal")?.addEventListener("click", closeTfPopup);
+
+          chartModal?.addEventListener("click", (e) => {
+            if (e.target === chartModal) closePopup();
+          });
+          tfModal?.addEventListener("click", (e) => {
+            if (e.target === tfModal) closeTfPopup();
+          });
+        }
+
+        window.openPopup = openPopup;
+        window.closePopup = closePopup;
+        window.openTfPopup = openTfPopup;
+        window.closeTfPopup = closeTfPopup;
+
+        /* ===================== Keyboard shortcuts ===================== */
+        function bindKeyboard() {
+          document.addEventListener(
+            "keydown",
+            (e) => {
+              const tag = e.target && e.target.tagName ? e.target.tagName : "";
+              if (tag === "INPUT" || tag === "TEXTAREA") return;
+              switch (String(e.key).toLowerCase()) {
+                case "escape":
+                  closePopup();
+                  closeTfPopup();
+                  closePanel();
+                  break;
+                case "c":
+                  openPanel("calendar");
+                  break;
+                case "n":
+                  openPanel("news");
+                  break;
+                case "h":
+                  openPanel("heatmap");
+                  break;
+                case "t":
+                  toggleTheme();
+                  break;
+              }
+            },
+            { passive: true }
+          );
+        }
+
+        function scrollToSymbol(symbol) {
+          const main = $("#mainContent");
+          if (!main) return;
+          const anchor = document.getElementById(`anchor-${safeIdFromSymbol(symbol)}`);
+          if (!anchor) return;
+
+          const mainRect = main.getBoundingClientRect();
+          const anchorRect = anchor.getBoundingClientRect();
+          const targetTop = main.scrollTop + (anchorRect.top - mainRect.top);
+          main.scrollTo({ top: Math.max(0, targetTop - 6), behavior: "smooth" });
+        }
+
+        /* ===================== Init ===================== */
+        function init() {
+          syncZoomComp();
+          window.addEventListener("resize", syncZoomComp, { passive: true });
+          window.visualViewport?.addEventListener("resize", syncZoomComp, { passive: true });
+
+          bindDock();
+          bindModalClose();
+          bindKeyboard();
+          bindTickerEvents();
+
+          generateChartGrid();
+
+          initTickers();
+
+          document.addEventListener(
+            "visibilitychange",
+            () => {
+              if (!document.hidden) {
+                startTickerFitBursts();
+                const strip = $("#tickerStrip");
+                if (strip && !strip.querySelector("tv-ticker-tag") && !strip.querySelector(".ticker-loading")) {
+                  refreshTickersSoft();
+                }
+              }
+            },
+            { passive: true }
+          );
+        }
+
+        init();
+      })();
+    </script>
+  </body>
+</html>
 
