@@ -6,8 +6,21 @@
     <meta name="color-scheme" content="dark light" />
     <title>Trading Dashboard</title>
 
-    <!-- If you want maximum speed in production, replace Tailwind browser runtime with a compiled CSS build.
-         Keeping your CDN approach as requested. -->
+    <!-- Performance: preconnects -->
+    <link rel="preconnect" href="https://s3.tradingview.com" />
+    <link rel="dns-prefetch" href="https://s3.tradingview.com" />
+    <link rel="preconnect" href="https://widgets.tradingview-widget.com" />
+    <link rel="dns-prefetch" href="https://widgets.tradingview-widget.com" />
+    <link rel="preconnect" href="https://fxverify.com" />
+    <link rel="dns-prefetch" href="https://fxverify.com" />
+
+    <!-- (Optional) RSS proxy endpoints used by the News module -->
+    <link rel="preconnect" href="https://api.allorigins.win" />
+    <link rel="dns-prefetch" href="https://api.allorigins.win" />
+    <link rel="preconnect" href="https://api.codetabs.com" />
+    <link rel="dns-prefetch" href="https://api.codetabs.com" />
+
+    <!-- Tailwind CDN runtime -->
     <script defer src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -35,7 +48,6 @@
         --accent-purple: #8b5cf6;
 
         --dock-w: 42px;
-        --preloader-duration: 30s;
         --topbar-height: 42px;
         --topbar-bg: #0b0f1a;
         --topbar-border: rgba(255, 255, 255, 0.12);
@@ -47,8 +59,13 @@
         --news-text-secondary: #e5e7eb;
         --news-text-muted: #d1d5db;
 
-        /* Zoom compensation for session time font-size */
         --zoom-comp: 1;
+
+        /* Dynamic calendar sizing computed by JS */
+        --calendar-sessions-h: 190px;
+
+        /* Focus ring */
+        --focus-ring: rgba(59, 130, 246, 0.35);
       }
 
       [data-theme="light"] {
@@ -67,6 +84,7 @@
         --news-text: #111827;
         --news-text-secondary: #111827;
         --news-text-muted: #374151;
+        --focus-ring: rgba(59, 130, 246, 0.25);
       }
 
       * {
@@ -84,6 +102,13 @@
         color: var(--text-primary);
         overflow: hidden;
         padding-top: var(--topbar-height);
+      }
+
+      /* Accessibility */
+      :focus-visible {
+        outline: 2px solid var(--accent-blue);
+        outline-offset: 2px;
+        border-radius: 6px;
       }
 
       ::-webkit-scrollbar {
@@ -115,7 +140,7 @@
         display: flex;
         align-items: center;
         padding-right: var(--dock-w);
-        contain: layout paint; /* isolates layout for stability/perf */
+        contain: layout paint;
       }
 
       .ticker-viewport {
@@ -238,7 +263,7 @@
 
       .dock-tooltip {
         position: absolute;
-        left: calc(100% + 6px);
+        right: calc(100% + 6px);
         top: 50%;
         transform: translateY(-50%);
         background: var(--bg-tertiary);
@@ -268,6 +293,7 @@
         overflow-y: auto;
         background: var(--bg-primary);
         z-index: 1;
+        scroll-behavior: smooth;
       }
 
       /* Charts */
@@ -301,10 +327,12 @@
         margin: -0.5px;
         overflow: hidden;
         background: var(--bg-card);
+        contain: content;
       }
 
-      .chart-cell .tradingview-widget-container,
-      .chart-cell .tradingview-widget-container__widget {
+      .chart-host,
+      .chart-host .tradingview-widget-container,
+      .chart-host .tradingview-widget-container__widget {
         width: 100%;
         height: 100%;
       }
@@ -390,6 +418,7 @@
         flex-direction: column;
         box-shadow: -4px 0 20px rgba(0, 0, 0, 0.3);
         pointer-events: auto;
+        min-width: 320px;
       }
 
       .panel.open {
@@ -423,37 +452,6 @@
         fill: none;
         stroke-width: 1.8;
         flex: 0 0 auto;
-      }
-
-      /* Tabs in panel title (News only) */
-      .panel-tabs {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        flex-wrap: wrap;
-        margin-left: 10px;
-      }
-      .tab-btn {
-        padding: 4px 8px;
-        border: 1px solid var(--border-color);
-        border-radius: 999px;
-        background: var(--bg-secondary);
-        color: var(--text-secondary);
-        font-size: 11px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all var(--anim);
-        line-height: 1;
-        user-select: none;
-      }
-      .tab-btn:hover {
-        border-color: var(--border-light);
-        color: var(--text-primary);
-      }
-      .tab-btn.active {
-        border-color: var(--accent-blue);
-        background: rgba(59, 130, 246, 0.15);
-        color: var(--text-primary);
       }
 
       .close-btn {
@@ -493,47 +491,47 @@
         background: var(--bg-secondary);
       }
 
-      .sessions-section {
-        flex: 0 0 25%;
-        height: 25%;
-        padding: 6px 10px 6px;
-        border-top: 1px solid var(--border-color);
-        background: var(--bg-tertiary);
-        overflow: hidden;
-        display: flex;
-        flex-direction: column;
-        min-height: 110px;
-      }
-
       .calendar-section {
-        flex: 1 1 75%;
-        height: 75%;
+        flex: 1 1 auto;
+        min-height: 0;
         overflow: hidden;
         background: var(--bg-secondary);
         position: relative;
       }
 
-      /* Fit sessions in container without scrolling */
-      #sessionContainer {
-        flex: 1 1 auto;
-        min-height: 0;
+      .sessions-section {
+        flex: 0 0 auto;
+        height: var(--calendar-sessions-h);
+        padding: 8px 10px 8px;
+        border-top: 1px solid var(--border-color);
+        background: var(--bg-tertiary);
         overflow: hidden;
         display: flex;
         flex-direction: column;
-        justify-content: space-between;
-        gap: 2px;
+        min-height: 140px;
+      }
+
+      #sessionContainer {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        padding-right: 2px;
       }
 
       .session-row {
         display: flex;
         align-items: center;
-        padding: 2px 0;
+        gap: 8px;
       }
 
       .session-label {
-        width: 86px;
-        font-size: 10px;
-        font-weight: 500;
+        width: calc(94px * var(--zoom-comp));
+        min-width: calc(82px * var(--zoom-comp));
+        font-size: calc(11px * var(--zoom-comp));
+        font-weight: 700;
         color: var(--text-secondary);
         display: flex;
         flex-direction: column;
@@ -541,25 +539,28 @@
       }
 
       .session-label .time {
-        font-size: calc(9px * var(--zoom-comp));
+        font-size: calc(10px * var(--zoom-comp));
         color: var(--text-muted);
         font-variant-numeric: tabular-nums;
+        font-weight: 600;
       }
 
       .session-bar-container {
         flex: 1;
-        height: 16px;
+        height: calc(18px * var(--zoom-comp));
+        min-height: 14px;
         background: var(--bg-secondary);
-        border-radius: 3px;
+        border-radius: 6px;
         position: relative;
         overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, 0.04);
       }
 
       .session-bar {
         position: absolute;
         height: 100%;
-        font-size: 9px;
-        font-weight: 500;
+        font-size: calc(10px * var(--zoom-comp));
+        font-weight: 700;
         color: white;
         transition: all var(--anim);
       }
@@ -598,24 +599,26 @@
         transform: translateX(-50%);
         background: var(--accent-red);
         color: white;
-        font-size: 8px;
-        padding: 1px 4px;
-        border-radius: 3px;
+        font-size: calc(9px * var(--zoom-comp));
+        padding: 1px 5px;
+        border-radius: 6px;
         white-space: nowrap;
-        font-weight: 600;
+        font-weight: 800;
       }
 
       .hour-labels {
         flex: 0 0 auto;
         display: flex;
         justify-content: space-between;
-        margin-top: 2px;
-        padding-left: 86px;
+        margin-top: 6px;
+        padding-left: calc(102px * var(--zoom-comp));
+        gap: 6px;
       }
 
       .hour-labels span {
-        font-size: 9px;
+        font-size: calc(10px * var(--zoom-comp));
         color: var(--text-muted);
+        font-weight: 700;
       }
 
       #economic-calendar-widget {
@@ -625,7 +628,6 @@
         position: relative;
       }
 
-      /* Calendar high-contrast text + smaller clock */
       .calendar-container .session-label,
       .calendar-container .session-label .time,
       .calendar-container .hour-labels span,
@@ -636,16 +638,17 @@
       .local-clock {
         flex: 0 0 auto;
         text-align: center;
-        font-weight: 700;
-        line-height: 1.05;
-        font-size: clamp(12px, 1.6vw, 16px);
-        margin: 0 0 4px;
+        font-weight: 900;
+        line-height: 1.1;
+        font-size: calc(14px * var(--zoom-comp));
+        margin: 0 0 6px;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+        letter-spacing: 0.2px;
       }
 
-      /* News (updated + faster + tabs sources + search only) */
+      /* News */
       .news-container {
         height: 100%;
         display: flex;
@@ -654,16 +657,16 @@
       }
 
       .news-header {
-        padding: 10px 12px;
-        background: var(--bg-tertiary);
+        padding: 12px;
+        background: linear-gradient(180deg, var(--bg-tertiary), rgba(0, 0, 0, 0));
         border-bottom: 1px solid var(--border-color);
         display: flex;
         flex-direction: column;
-        gap: 8px;
+        gap: 10px;
         flex: 0 0 auto;
       }
 
-      .news-header-top {
+      .news-header-row1 {
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -671,14 +674,57 @@
         flex-wrap: wrap;
       }
 
-      .news-status-wrap {
-        font-size: calc(11px * var(--news-font-scale));
-        color: var(--news-text-muted);
-        display: flex;
+      .news-tabs {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 3px;
+        border: 1px solid var(--border-color);
+        border-radius: 999px;
+        background: rgba(0, 0, 0, 0.08);
+      }
+
+      .tab-btn {
+        padding: 6px 10px;
+        border: none;
+        border-radius: 999px;
+        background: transparent;
+        color: var(--text-secondary);
+        font-size: calc(12px * var(--news-font-scale));
+        font-weight: 800;
+        cursor: pointer;
+        transition: all var(--anim);
+        line-height: 1;
+        user-select: none;
+      }
+
+      .tab-btn:hover {
+        color: var(--text-primary);
+        background: rgba(59, 130, 246, 0.08);
+      }
+
+      .tab-btn.active {
+        color: white;
+        background: var(--accent-blue);
+        box-shadow: 0 8px 20px rgba(59, 130, 246, 0.18);
+      }
+
+      .news-status-pill {
+        display: inline-flex;
         align-items: center;
         gap: 8px;
-        flex-wrap: wrap;
-        min-width: 0;
+        padding: 6px 10px;
+        border: 1px solid var(--border-color);
+        border-radius: 999px;
+        background: rgba(17, 24, 39, 0.55);
+        color: var(--news-text-muted);
+        font-size: calc(11px * var(--news-font-scale));
+        font-weight: 700;
+        min-width: 220px;
+      }
+
+      [data-theme="light"] .news-status-pill {
+        background: rgba(255, 255, 255, 0.7);
       }
 
       .news-controls {
@@ -686,98 +732,108 @@
         align-items: center;
         gap: 6px;
         flex: 0 0 auto;
+        flex-wrap: wrap;
       }
 
       .news-btn {
-        padding: 4px 10px;
+        padding: 7px 10px;
         background: var(--bg-secondary);
         border: 1px solid var(--border-color);
-        border-radius: 4px;
-        font-size: calc(11px * var(--news-font-scale));
+        border-radius: 10px;
+        font-size: calc(12px * var(--news-font-scale));
         color: var(--news-text);
         cursor: pointer;
         transition: all var(--anim);
         line-height: 1;
+        font-weight: 800;
       }
 
       .news-btn:hover {
         background: var(--bg-card);
         border-color: var(--accent-blue);
+        box-shadow: 0 0 0 3px var(--focus-ring);
       }
 
-      .quickbar {
+      .news-btn.toggled {
+        border-color: var(--accent-yellow);
+        background: rgba(245, 158, 11, 0.12);
+        color: var(--accent-yellow);
+      }
+
+      .news-header-row2 {
         display: flex;
+        gap: 10px;
         align-items: center;
-        gap: 8px;
         flex-wrap: wrap;
       }
 
       .search-wrap {
         display: flex;
         align-items: center;
-        gap: 8px;
-        flex: 1 1 420px;
-        min-width: 220px;
+        gap: 10px;
+        flex: 1 1 440px;
+        min-width: 240px;
       }
 
       .search-input {
         width: 100%;
-        padding: 7px 10px;
+        padding: 10px 12px;
         border: 1px solid var(--border-color);
-        border-radius: 8px;
+        border-radius: 12px;
         background: var(--bg-secondary);
         color: var(--text-primary);
-        font-size: calc(12px * var(--news-font-scale));
+        font-size: calc(13px * var(--news-font-scale));
         outline: none;
+        font-weight: 700;
       }
 
       .search-input:focus {
         border-color: var(--accent-blue);
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+        box-shadow: 0 0 0 3px var(--focus-ring);
       }
 
       .search-hint {
-        font-size: calc(10px * var(--news-font-scale));
+        font-size: calc(11px * var(--news-font-scale));
         color: var(--news-text-muted);
         white-space: nowrap;
+        font-weight: 700;
       }
 
-      /* Yellow filter tag */
-      .news-tag {
-        font-size: calc(11px * var(--news-font-scale));
-        font-weight: 800;
-        padding: 2px 8px;
+      .filters-wrap {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .news-chip {
+        font-size: calc(12px * var(--news-font-scale));
+        font-weight: 900;
+        padding: 6px 10px;
         border-radius: 999px;
         border: 1px solid var(--border-color);
-        background: rgba(245, 158, 11, 0.12);
-        color: var(--accent-yellow);
-        line-height: 1.2;
+        background: rgba(59, 130, 246, 0.06);
+        color: var(--text-primary);
+        line-height: 1;
         user-select: none;
-        cursor: default;
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-      }
-
-      .news-tag.clickable {
         cursor: pointer;
+        transition: all var(--anim);
       }
 
-      .news-tag.clickable:hover {
+      .news-chip:hover {
+        border-color: var(--accent-blue);
+      }
+
+      .news-chip.active {
         border-color: var(--accent-yellow);
-        background: rgba(245, 158, 11, 0.2);
+        background: rgba(245, 158, 11, 0.16);
+        color: var(--accent-yellow);
       }
 
-      .news-tag.active {
-        border-color: var(--accent-yellow);
-        background: rgba(245, 158, 11, 0.25);
-      }
-
-      /* NEW badge */
       .badge-new {
-        font-size: calc(10px * var(--news-font-scale));
-        font-weight: 800;
-        padding: 2px 7px;
+        font-size: calc(11px * var(--news-font-scale));
+        font-weight: 900;
+        padding: 3px 8px;
         border-radius: 999px;
         border: 1px solid var(--border-color);
         background: rgba(59, 130, 246, 0.12);
@@ -788,7 +844,7 @@
 
       .news-list {
         list-style: none;
-        padding: 10px;
+        padding: 10px 12px 12px;
         overflow: auto;
         flex: 1 1 auto;
         min-height: 0;
@@ -799,8 +855,8 @@
         padding: 10px;
         background: var(--bg-tertiary);
         border: 1px solid var(--border-color);
-        border-radius: 8px;
-        margin-bottom: 8px;
+        border-radius: 10px;
+        margin-bottom: 10px;
         transition: all var(--anim);
       }
 
@@ -811,43 +867,43 @@
       .news-title-row {
         display: flex;
         flex-wrap: wrap;
-        gap: 6px;
-        align-items: baseline;
+        gap: 8px;
+        align-items: center;
       }
 
       .news-title-row a {
         color: var(--accent-blue);
         text-decoration: none;
-        font-weight: 700;
+        font-weight: 900;
         font-size: calc(15px * var(--news-font-scale));
         line-height: 1.3;
       }
 
-      /* Meta smaller + requested format */
       .news-meta {
-        font-size: calc(10px * var(--news-font-scale));
+        font-size: calc(11px * var(--news-font-scale));
         color: var(--news-text-muted);
         background: var(--bg-secondary);
-        padding: 1px 6px;
-        border-radius: 3px;
+        padding: 3px 8px;
+        border-radius: 999px;
         line-height: 1.2;
+        font-weight: 800;
       }
 
       .news-desc {
-        margin-top: 6px;
+        margin-top: 7px;
         font-size: calc(14px * var(--news-font-scale));
         color: var(--news-text-secondary);
-        line-height: 1.4;
+        line-height: 1.45;
+        font-weight: 600;
       }
 
-      /* Favorite star */
       .star-btn {
         margin-left: auto;
         border: 1px solid var(--border-color);
         background: var(--bg-secondary);
         color: var(--text-secondary);
-        border-radius: 8px;
-        padding: 4px 8px;
+        border-radius: 12px;
+        padding: 7px 10px;
         cursor: pointer;
         transition: all var(--anim);
         display: inline-flex;
@@ -868,8 +924,8 @@
       }
 
       .star-btn svg {
-        width: 14px;
-        height: 14px;
+        width: 16px;
+        height: 16px;
         stroke: currentColor;
         fill: none;
         stroke-width: 2;
@@ -879,7 +935,6 @@
         fill: currentColor;
       }
 
-      /* Arabic RTL */
       .news-container.rtl {
         direction: rtl;
         text-align: right;
@@ -914,7 +969,7 @@
         width: 100%;
         background: var(--bg-secondary);
         border: 1px solid var(--border-color);
-        border-radius: 8px;
+        border-radius: 10px;
         overflow: hidden;
       }
 
@@ -923,16 +978,8 @@
         width: 100%;
       }
 
-      /* Modal */
-      #chartModal {
-        display: none;
-        position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.8);
-        z-index: 9999;
-        padding: 15px;
-      }
-
+      /* Modals */
+      #chartModal,
       #tfChartModal {
         display: none;
         position: fixed;
@@ -946,7 +993,7 @@
         width: 100%;
         height: 100%;
         background: var(--bg-secondary);
-        border-radius: 8px;
+        border-radius: 10px;
         border: 1px solid var(--border-color);
         overflow: hidden;
         display: flex;
@@ -964,14 +1011,14 @@
 
       .modal-title {
         font-size: 14px;
-        font-weight: 600;
+        font-weight: 800;
       }
 
       .modal-close {
         width: 28px;
         height: 28px;
         border: none;
-        border-radius: 6px;
+        border-radius: 8px;
         background: var(--accent-red);
         color: white;
         font-size: 16px;
@@ -1024,7 +1071,7 @@
           right: 36px;
         }
         .panel {
-          width: 85%;
+          width: 88%;
           right: 36px;
         }
         .topbar {
@@ -1041,7 +1088,7 @@
         .news-btn,
         .news-item,
         .tab-btn,
-        .news-tag,
+        .news-chip,
         .star-btn {
           transition: none !important;
         }
@@ -1057,7 +1104,7 @@
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        transition: opacity 0.8s ease, visibility 0.8s ease;
+        transition: opacity 0.6s ease, visibility 0.6s ease;
       }
 
       [data-theme="light"] .preloader {
@@ -1076,22 +1123,6 @@
         color: #6b7280;
       }
 
-      [data-theme="light"] .progress-percentage {
-        color: #111827;
-      }
-
-      [data-theme="light"] .progress-percentage span {
-        color: #6b7280;
-      }
-
-      [data-theme="light"] .step-item {
-        color: #6b7280;
-      }
-
-      [data-theme="light"] .step-item.active {
-        color: #4b5563;
-      }
-
       .preloader.hidden {
         opacity: 0;
         visibility: hidden;
@@ -1102,7 +1133,9 @@
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 40px;
+        gap: 34px;
+        padding: 0 16px;
+        width: min(520px, 92vw);
       }
 
       .preloader-logo {
@@ -1110,6 +1143,7 @@
         flex-direction: column;
         align-items: center;
         gap: 12px;
+        text-align: center;
       }
 
       .preloader-icon {
@@ -1146,7 +1180,7 @@
 
       .preloader-title {
         font-size: 28px;
-        font-weight: 700;
+        font-weight: 800;
         background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple), var(--accent-blue));
         background-size: 200% 100%;
         -webkit-background-clip: text;
@@ -1173,10 +1207,10 @@
       }
 
       .preloader-progress {
-        width: 320px;
+        width: 100%;
         display: flex;
         flex-direction: column;
-        gap: 16px;
+        gap: 14px;
       }
 
       .progress-bar-container {
@@ -1186,6 +1220,7 @@
         border-radius: 3px;
         overflow: hidden;
         position: relative;
+        border: 1px solid rgba(255, 255, 255, 0.04);
       }
 
       .progress-bar {
@@ -1193,7 +1228,7 @@
         width: 0%;
         background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple));
         border-radius: 3px;
-        transition: width 0.1s linear;
+        transition: width 0.12s linear;
         position: relative;
       }
 
@@ -1204,7 +1239,7 @@
         left: 0;
         right: 0;
         bottom: 0;
-        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.26), transparent);
         animation: shimmer 1.5s infinite;
       }
 
@@ -1221,17 +1256,21 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
+        gap: 10px;
       }
 
       .progress-percentage {
-        font-size: 36px;
-        font-weight: 700;
+        font-size: 34px;
+        font-weight: 900;
         color: var(--text-primary);
         font-variant-numeric: tabular-nums;
+        display: flex;
+        align-items: baseline;
+        gap: 4px;
       }
 
-      .progress-percentage span {
-        font-size: 20px;
+      .progress-percentage span:last-child {
+        font-size: 18px;
         color: var(--text-muted);
       }
 
@@ -1240,11 +1279,12 @@
         flex-direction: column;
         align-items: flex-end;
         gap: 2px;
+        min-width: 160px;
       }
 
       .timer-value {
-        font-size: 24px;
-        font-weight: 600;
+        font-size: 18px;
+        font-weight: 900;
         color: var(--accent-blue);
         font-variant-numeric: tabular-nums;
       }
@@ -1254,13 +1294,14 @@
         color: var(--text-muted);
         text-transform: uppercase;
         letter-spacing: 1px;
+        font-weight: 800;
       }
 
       .preloader-steps {
         display: flex;
         flex-direction: column;
         gap: 8px;
-        width: 320px;
+        width: 100%;
       }
 
       .step-item {
@@ -1269,8 +1310,9 @@
         gap: 10px;
         font-size: 12px;
         color: var(--text-muted);
-        opacity: 0.4;
-        transition: all 0.3s ease;
+        opacity: 0.35;
+        transition: all 0.25s ease;
+        font-weight: 700;
       }
 
       .step-item.active {
@@ -1332,7 +1374,6 @@
         position: absolute;
         width: 4px;
         height: 4px;
-        background: var(--accent-blue);
         border-radius: 50%;
         opacity: 0.3;
         animation: float-particle 8s infinite ease-in-out;
@@ -1358,23 +1399,41 @@
         }
       }
 
-      .preloader-active .topbar,
-      .preloader-active .dock,
-      .preloader-active main,
-      .preloader-active .panel {
-        visibility: visible;
-        opacity: 1;
+      .preloader-actions {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+        width: 100%;
+      }
+
+      .preloader-skip {
+        padding: 9px 12px;
+        border-radius: 12px;
+        border: 1px solid var(--border-color);
+        background: rgba(17, 24, 39, 0.5);
+        color: var(--text-primary);
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 900;
+        transition: all var(--anim);
+      }
+      [data-theme="light"] .preloader-skip {
+        background: rgba(255, 255, 255, 0.7);
+      }
+      .preloader-skip:hover {
+        border-color: var(--accent-blue);
+        box-shadow: 0 0 0 3px var(--focus-ring);
       }
     </style>
   </head>
 
   <body>
     <!-- Preloader -->
-    <div class="preloader" id="preloader">
+    <div class="preloader" id="preloader" role="status" aria-live="polite">
       <div class="preloader-particles" id="particles"></div>
       <div class="preloader-content">
         <div class="preloader-logo">
-          <div class="preloader-icon">
+          <div class="preloader-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
               <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
               <polyline points="16 7 22 7 22 13" />
@@ -1386,38 +1445,46 @@
 
         <div class="preloader-progress">
           <div class="progress-info">
-            <div class="progress-percentage"><span id="percentValue">0</span><span>%</span></div>
+            <div class="progress-percentage">
+              <span id="percentValue">0</span><span>%</span>
+            </div>
             <div class="progress-timer">
-              <div class="timer-value" id="timerValue">30</div>
-              <div class="timer-label">seconds</div>
+              <div class="timer-value" id="timerValue">15</div>
+              <div class="timer-label">seconds remaining</div>
             </div>
           </div>
-          <div class="progress-bar-container">
+          <div class="progress-bar-container" aria-hidden="true">
             <div class="progress-bar" id="progressBar"></div>
           </div>
         </div>
 
-        <div class="preloader-steps">
+        <div class="preloader-steps" aria-label="Loading steps">
           <div class="step-item" data-step="1">
             <div class="step-icon"></div>
             <span>Initializing trading engine...</span>
           </div>
           <div class="step-item" data-step="2">
             <div class="step-icon"></div>
-            <span>Loading market data feeds...</span>
+            <span>Rendering chart grid...</span>
           </div>
           <div class="step-item" data-step="3">
             <div class="step-icon"></div>
-            <span>Connecting to price streams...</span>
+            <span>Connecting to market tickers...</span>
           </div>
           <div class="step-item" data-step="4">
             <div class="step-icon"></div>
-            <span>Preparing chart widgets...</span>
+            <span>Scheduling chart widgets...</span>
           </div>
           <div class="step-item" data-step="5">
             <div class="step-icon"></div>
-            <span>Finalizing dashboard...</span>
+            <span>Final checks...</span>
           </div>
+        </div>
+
+        <div class="preloader-actions">
+          <button class="preloader-skip" id="preloaderSkip" type="button" aria-label="Skip preloader">
+            Skip (Esc)
+          </button>
         </div>
       </div>
     </div>
@@ -1437,7 +1504,7 @@
     <!-- Dock -->
     <aside class="dock" id="dock" aria-label="Tools dock">
       <div class="dock-section">
-        <button class="dock-btn" id="themeToggle" title="Toggle Theme" aria-label="Toggle theme" data-action="theme">
+        <button class="dock-btn" id="themeToggle" type="button" title="Toggle Theme" aria-label="Toggle theme" data-action="theme">
           <svg class="icon" viewBox="0 0 24 24">
             <circle cx="12" cy="12" r="5"></circle>
             <path
@@ -1449,7 +1516,7 @@
 
         <div class="dock-sep"></div>
 
-        <button class="dock-btn" data-panel="calendar" title="Calendar" aria-label="Open calendar panel">
+        <button class="dock-btn" type="button" data-panel="calendar" title="Calendar" aria-label="Open calendar panel">
           <svg class="icon" viewBox="0 0 24 24">
             <rect x="3" y="4" width="18" height="18" rx="2"></rect>
             <path d="M16 2v4M8 2v4M3 10h18"></path>
@@ -1457,7 +1524,7 @@
           <div class="dock-tooltip">Calendar</div>
         </button>
 
-        <button class="dock-btn" data-panel="news" title="News" aria-label="Open news panel">
+        <button class="dock-btn" type="button" data-panel="news" title="News" aria-label="Open news panel">
           <svg class="icon" viewBox="0 0 24 24">
             <path
               d="M4 22h16a2 2 0 002-2V4a2 2 0 00-2-2H8a2 2 0 00-2 2v16a2 2 0 01-2 2zm0 0a2 2 0 01-2-2v-9c0-1.1.9-2 2-2h2"
@@ -1467,7 +1534,7 @@
           <div class="dock-tooltip">News</div>
         </button>
 
-        <button class="dock-btn" data-panel="heatmap" title="Forex Heatmap" aria-label="Open forex heatmap panel">
+        <button class="dock-btn" type="button" data-panel="heatmap" title="Forex Heatmap" aria-label="Open forex heatmap panel">
           <svg class="icon" viewBox="0 0 24 24">
             <path
               d="M12 2s2.8 3 2.8 6.2c0 1.4-.6 2.6-1.4 3.5-.9 1-2 1.9-2 3.6 0 1.7 1.3 3 3 3 2.6 0 4.6-2.2 4.6-5.1 0-2.2-1.1-4-2.5-5.6"
@@ -1481,7 +1548,7 @@
       </div>
 
       <div class="dock-section">
-        <button class="dock-btn" data-action="refresh" title="Refresh" aria-label="Refresh page" id="refreshBtn">
+        <button class="dock-btn" type="button" data-action="refresh" title="Refresh" aria-label="Refresh page" id="refreshBtn">
           <svg class="icon" viewBox="0 0 24 24">
             <path d="M23 4v6h-6M1 20v-6h6"></path>
             <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"></path>
@@ -1498,7 +1565,7 @@
           <svg class="icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" /></svg>
           <span>Panel</span>
         </h2>
-        <button id="closePanel" class="close-btn" aria-label="Close panel">
+        <button id="closePanel" class="close-btn" type="button" aria-label="Close panel">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M18 6L6 18M6 6l12 12" />
           </svg>
@@ -1512,7 +1579,7 @@
       <div class="modal-container" role="document">
         <div class="modal-header">
           <div class="modal-title" id="modalSymbol">Symbol</div>
-          <button class="modal-close" id="closeChartModal" aria-label="Close chart modal">×</button>
+          <button class="modal-close" id="closeChartModal" type="button" aria-label="Close chart modal">×</button>
         </div>
         <div class="modal-body">
           <div class="modal-left" id="popupLeft"></div>
@@ -1529,7 +1596,7 @@
       <div class="modal-container" role="document">
         <div class="modal-header">
           <div class="modal-title" id="tfModalSymbol">Symbol</div>
-          <button class="modal-close" id="closeTfChartModal" aria-label="Close timeframe modal">×</button>
+          <button class="modal-close" id="closeTfChartModal" type="button" aria-label="Close timeframe modal">×</button>
         </div>
         <div class="modal-body">
           <div class="modal-single" id="tfPopupMain"></div>
@@ -1544,93 +1611,45 @@
       (() => {
         "use strict";
 
-        /* ===================== Preloader ===================== */
-        const PRELOAD_DURATION = 30; // seconds
-        function initPreloader() {
-          const preloader = document.getElementById("preloader");
-          const progressBar = document.getElementById("progressBar");
-          const percentValue = document.getElementById("percentValue");
-          const timerValue = document.getElementById("timerValue");
-          const particlesContainer = document.getElementById("particles");
-          const steps = document.querySelectorAll(".step-item");
-          if (!preloader) return;
+        /* ===================== Utilities ===================== */
+        const $ = (sel, root = document) => root.querySelector(sel);
+        const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 
-          document.body.classList.add("preloader-active");
-          createParticles(particlesContainer);
-
-          const startTime = Date.now();
-          const endTime = startTime + PRELOAD_DURATION * 1000;
-
-          const stepThresholds = [0, 20, 40, 60, 85];
-
-          function updateProgress() {
-            const now = Date.now();
-            const elapsed = now - startTime;
-            const remaining = Math.max(0, endTime - now);
-            const progress = Math.min(100, (elapsed / (PRELOAD_DURATION * 1000)) * 100);
-
-            const percent = Math.floor(progress);
-            percentValue.textContent = percent;
-            progressBar.style.width = `${progress}%`;
-
-            const secondsLeft = Math.ceil(remaining / 1000);
-            timerValue.textContent = secondsLeft;
-
-            steps.forEach((step, index) => {
-              const threshold = stepThresholds[index];
-              const nextThreshold = stepThresholds[index + 1] || 100;
-              if (progress >= nextThreshold) {
-                step.classList.remove("active");
-                step.classList.add("completed");
-              } else if (progress >= threshold) {
-                step.classList.add("active");
-                step.classList.remove("completed");
-              } else {
-                step.classList.remove("active", "completed");
-              }
-            });
-
-            if (progress < 100) {
-              requestAnimationFrame(updateProgress);
-            } else {
-              finishPreloader();
-            }
+        function safeStorageGet(key, fallback = null) {
+          try {
+            const v = localStorage.getItem(key);
+            return v == null ? fallback : v;
+          } catch {
+            return fallback;
           }
-
-          function finishPreloader() {
-            steps.forEach((step) => {
-              step.classList.remove("active");
-              step.classList.add("completed");
-            });
-
-            setTimeout(() => {
-              preloader.classList.add("hidden");
-              document.body.classList.remove("preloader-active");
-              setTimeout(() => {
-                preloader.remove();
-              }, 800);
-            }, 300);
-          }
-
-          function createParticles(container) {
-            if (!container) return;
-            const particleCount = 20;
-            for (let i = 0; i < particleCount; i++) {
-              const particle = document.createElement("div");
-              particle.className = "particle";
-              particle.style.left = `${Math.random() * 100}%`;
-              particle.style.top = `${Math.random() * 100}%`;
-              particle.style.animationDelay = `${Math.random() * 8}s`;
-              particle.style.animationDuration = `${6 + Math.random() * 4}s`;
-              const colors = ["var(--accent-blue)", "var(--accent-purple)", "var(--accent-green)"];
-              particle.style.background = colors[(Math.random() * colors.length) | 0];
-              container.appendChild(particle);
-            }
-          }
-
-          requestAnimationFrame(updateProgress);
         }
-        initPreloader();
+        function safeStorageSet(key, value) {
+          try {
+            localStorage.setItem(key, value);
+          } catch {
+            /* ignore */
+          }
+        }
+        function safeIdFromSymbol(symbol) {
+          return String(symbol).replace(/[^a-zA-Z0-9]+/g, "-").toLowerCase();
+        }
+        function clamp(n, min, max) {
+          n = Number(n);
+          if (!Number.isFinite(n)) return min;
+          return Math.max(min, Math.min(max, n));
+        }
+        function on(el, type, handler, options) {
+          if (!el) return () => {};
+          el.addEventListener(type, handler, options);
+          return () => {
+            try {
+              el.removeEventListener(type, handler, options);
+            } catch {}
+          };
+        }
+        function nowMs() {
+          return performance && typeof performance.now === "function" ? performance.now() : Date.now();
+        }
 
         /* ===================== Constants ===================== */
         const TICKER_SYMBOLS = [
@@ -1672,34 +1691,20 @@
         const TV_TICKER_SCRIPT_URL = "https://widgets.tradingview-widget.com/w/en/tv-ticker-tag.js";
         const TV_TICKER_SCRIPT_ID = "tv-ticker-tag-script";
 
-        const $ = (sel, root = document) => root.querySelector(sel);
-        const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
-
-        function safeStorageGet(key, fallback = null) {
-          try {
-            const v = localStorage.getItem(key);
-            return v == null ? fallback : v;
-          } catch {
-            return fallback;
-          }
-        }
-        function safeStorageSet(key, value) {
-          try {
-            localStorage.setItem(key, value);
-          } catch {
-            /* ignore */
-          }
-        }
-        function safeIdFromSymbol(symbol) {
-          return String(symbol).replace(/[^a-zA-Z0-9]+/g, "-").toLowerCase();
-        }
+        const TV_CHART_EMBED_URL = "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js";
 
         /* ===================== Theme ===================== */
-        const savedTheme = safeStorageGet("theme", "dark") || "dark";
-        document.documentElement.setAttribute("data-theme", savedTheme);
+        function getPreferredTheme() {
+          const saved = safeStorageGet("theme", null);
+          if (saved === "dark" || saved === "light") return saved;
+          const mql = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)");
+          return mql && mql.matches ? "dark" : "light";
+        }
+
+        document.documentElement.setAttribute("data-theme", getPreferredTheme());
 
         function getTheme() {
-          return document.documentElement.getAttribute("data-theme");
+          return document.documentElement.getAttribute("data-theme") || "dark";
         }
 
         function updateThemeIcon() {
@@ -1715,8 +1720,11 @@
         /* ===== Zoom compensation ===== */
         function syncZoomComp() {
           const dpr = window.devicePixelRatio || 1;
-          const comp = Math.max(0.7, Math.min(1.15, 1 / dpr));
+          const comp = clamp(1 / dpr, 0.7, 1.2);
           document.documentElement.style.setProperty("--zoom-comp", comp.toFixed(3));
+          try {
+            document.dispatchEvent(new CustomEvent("ui:zoomchange"));
+          } catch {}
         }
 
         /* ===================== News font scale ===================== */
@@ -1724,35 +1732,144 @@
         if (!Number.isFinite(newsFontScale) || newsFontScale <= 0) newsFontScale = 1;
 
         function applyNewsFontScale() {
-          newsFontScale = Math.max(0.7, Math.min(1.8, Number(newsFontScale) || 1));
+          newsFontScale = clamp(newsFontScale, 0.7, 1.8);
           document.documentElement.style.setProperty("--news-font-scale", String(newsFontScale));
           safeStorageSet("newsFontScale", String(newsFontScale));
         }
         applyNewsFontScale();
 
-        /* ===================== Ticker (Fixed + Stable) ===================== */
+        /* ===================== Preloader (SYNCED to 15s countdown) ===================== */
+        const Preloader = (() => {
+          const FIXED_VISIBLE_MS = 15000;
 
+          const pre = $("#preloader");
+          const bar = $("#progressBar");
+          const percent = $("#percentValue");
+          const timer = $("#timerValue");
+          const steps = $$(".step-item");
+          const particles = $("#particles");
+          const skipBtn = $("#preloaderSkip");
+
+          let startAt = Date.now();
+          let raf = 0;
+          let finished = false;
+
+          function createParticles() {
+            if (!particles) return;
+            particles.textContent = "";
+            const particleCount = 20;
+            for (let i = 0; i < particleCount; i++) {
+              const p = document.createElement("div");
+              p.className = "particle";
+              p.style.left = `${Math.random() * 100}%`;
+              p.style.top = `${Math.random() * 100}%`;
+              p.style.animationDelay = `${Math.random() * 8}s`;
+              p.style.animationDuration = `${6 + Math.random() * 4}s`;
+              const colors = ["var(--accent-blue)", "var(--accent-purple)", "var(--accent-green)"];
+              p.style.background = colors[(Math.random() * colors.length) | 0];
+              particles.appendChild(p);
+            }
+          }
+
+          function renderStepsByElapsed(elapsedMs) {
+            const seg = FIXED_VISIBLE_MS / 5;
+            const idx = clamp(Math.floor(elapsedMs / seg), 0, 4);
+
+            steps.forEach((step, i) => {
+              step.classList.remove("active", "completed");
+              if (i < idx) step.classList.add("completed");
+              else if (i === idx) step.classList.add("active");
+            });
+
+            if (elapsedMs >= FIXED_VISIBLE_MS) {
+              steps.forEach((s) => {
+                s.classList.remove("active");
+                s.classList.add("completed");
+              });
+            }
+          }
+
+          function update() {
+            if (!pre || finished) return;
+
+            const elapsed = Date.now() - startAt;
+            const remaining = Math.max(0, FIXED_VISIBLE_MS - elapsed);
+
+            const pct = clamp((elapsed / FIXED_VISIBLE_MS) * 100, 0, 100);
+
+            if (percent) percent.textContent = String(Math.floor(pct));
+            if (bar) bar.style.width = `${pct}%`;
+            if (timer) timer.textContent = String(Math.ceil(remaining / 1000));
+
+            renderStepsByElapsed(elapsed);
+
+            if (elapsed >= FIXED_VISIBLE_MS) finish();
+            else raf = requestAnimationFrame(update);
+          }
+
+          function finish() {
+            if (!pre || finished) return;
+            finished = true;
+
+            if (percent) percent.textContent = "100";
+            if (bar) bar.style.width = "100%";
+            if (timer) timer.textContent = "0";
+
+            renderStepsByElapsed(FIXED_VISIBLE_MS);
+
+            pre.classList.add("hidden");
+
+            try {
+              document.dispatchEvent(new CustomEvent("preloader:done"));
+            } catch {}
+
+            setTimeout(() => {
+              try {
+                pre.remove();
+              } catch {}
+            }, 650);
+          }
+
+          function skip() {
+            finish();
+          }
+
+          function start() {
+            if (!pre) return;
+            createParticles();
+            startAt = Date.now();
+            raf = requestAnimationFrame(update);
+
+            on(skipBtn, "click", () => skip());
+            on(document, "keydown", (e) => {
+              if (e.key === "Escape") skip();
+            });
+          }
+
+          function setDone() {}
+
+          return { start, setDone };
+        })();
+
+        Preloader.start();
+
+        /* ===================== Ticker (Stable + Fit) ===================== */
         function setTickerLoading(message = "Loading tickers...") {
           const strip = $("#tickerStrip");
           if (!strip) return;
           strip.innerHTML = `<div class="ticker-loading"><div class="ticker-loading-spinner"></div><span>${message}</span></div>`;
         }
-
         function setTickerError(message) {
           const strip = $("#tickerStrip");
           if (!strip) return;
-          strip.innerHTML = `<div class="ticker-loading"><span style="color: var(--accent-red);">${message}</span></div>`;
+          strip.innerHTML = `<div class="ticker-loading"><span style="color: var(--accent-red); font-weight:800;">${message}</span></div>`;
         }
 
         function ensureTickerScriptOnce() {
-          // If already defined, do nothing.
           if (customElements.get("tv-ticker-tag")) return Promise.resolve();
 
-          // If script tag already present, wait for definition.
           const existing = document.getElementById(TV_TICKER_SCRIPT_ID);
-          if (existing) {
-            return customElements.whenDefined("tv-ticker-tag");
-          }
+          if (existing) return customElements.whenDefined("tv-ticker-tag");
 
           return new Promise((resolve, reject) => {
             const script = document.createElement("script");
@@ -1760,10 +1877,7 @@
             script.type = "module";
             script.src = TV_TICKER_SCRIPT_URL;
             script.onload = () => {
-              customElements
-                .whenDefined("tv-ticker-tag")
-                .then(resolve)
-                .catch(() => resolve()); // be resilient
+              customElements.whenDefined("tv-ticker-tag").then(resolve).catch(resolve);
             };
             script.onerror = () => reject(new Error("Failed to load ticker script"));
             document.head.appendChild(script);
@@ -1773,7 +1887,6 @@
         function createTickerTags() {
           const strip = $("#tickerStrip");
           if (!strip) return;
-
           strip.textContent = "";
           const frag = document.createDocumentFragment();
           for (const symbol of TICKER_SYMBOLS) {
@@ -1784,7 +1897,6 @@
           strip.appendChild(frag);
         }
 
-        // Fit tickers: only on known triggers (no mutation/attribute loops)
         let fitRaf = 0;
         let lastFitTs = 0;
 
@@ -1792,26 +1904,21 @@
           const viewport = $("#tickerViewport");
           const strip = $("#tickerStrip");
           if (!viewport || !strip) return;
-
-          // Don't fit if showing loading/error message
           if (strip.querySelector(".ticker-loading")) return;
 
-          // Throttle hard: no more than ~every 120ms
-          const now = performance.now();
-          if (now - lastFitTs < 120) return;
-          lastFitTs = now;
+          const t = nowMs();
+          if (t - lastFitTs < 120) return;
+          lastFitTs = t;
 
           strip.style.transform = "scale(1)";
           const viewportWidth = viewport.clientWidth;
           const stripWidth = strip.scrollWidth;
-
           if (!stripWidth || !viewportWidth) return;
 
           const safety = 0.985;
           const minScale = 0.6;
           const maxScale = 1.25;
-          const raw = (viewportWidth / stripWidth) * safety;
-          const scale = Math.max(minScale, Math.min(maxScale, raw));
+          const scale = clamp((viewportWidth / stripWidth) * safety, minScale, maxScale);
           strip.style.transform = `scale(${scale})`;
         }
 
@@ -1824,12 +1931,11 @@
         }
 
         function startTickerFitBursts() {
-          // run several times after render; avoids continuous loops
           scheduleTickerFit();
-          setTimeout(scheduleTickerFit, 150);
-          setTimeout(scheduleTickerFit, 400);
-          setTimeout(scheduleTickerFit, 900);
-          setTimeout(scheduleTickerFit, 1600);
+          setTimeout(scheduleTickerFit, 120);
+          setTimeout(scheduleTickerFit, 350);
+          setTimeout(scheduleTickerFit, 800);
+          setTimeout(scheduleTickerFit, 1400);
         }
 
         async function initTickers() {
@@ -1837,8 +1943,6 @@
             setTickerLoading("Loading tickers...");
             await ensureTickerScriptOnce();
             createTickerTags();
-
-            // Fit after insertion + after fonts settle
             startTickerFitBursts();
             if (document.fonts && document.fonts.ready) {
               document.fonts.ready.then(() => startTickerFitBursts()).catch(() => {});
@@ -1868,7 +1972,6 @@
                 path.find((n) => n && n.tagName === "TV-TICKER-TAG") ||
                 (e.target && e.target.closest ? e.target.closest("tv-ticker-tag") : null);
               if (!host) return;
-
               const sym = host.getAttribute("symbol");
               if (sym) scrollToSymbol(sym);
             },
@@ -1884,263 +1987,367 @@
           }
         }
 
-        /* ===================== Charts ===================== */
-        function injectGridChartWidget(cell) {
-          const theme = getTheme();
-          const symbol = cell.dataset.symbol;
-          const interval = cell.dataset.interval;
+        /* ===================== Charts (lazy-load + theme-safe) ===================== */
+        const ChartGrid = (() => {
+          let io = null;
+          const loadQueue = [];
+          let queueRaf = 0;
 
-          const widgetContainer = document.createElement("div");
-          widgetContainer.className = "tradingview-widget-container";
-          widgetContainer.style.cssText = "height:100%;width:100%;";
-
-          const widgetDiv = document.createElement("div");
-          widgetDiv.className = "tradingview-widget-container__widget";
-          widgetDiv.style.cssText = "height:100%;width:100%;";
-
-          const script = document.createElement("script");
-          script.type = "text/javascript";
-          script.src = "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js";
-          script.async = true;
-          script.textContent = JSON.stringify({
-            autosize: true,
-            symbol,
-            interval,
-            timezone: "Etc/UTC",
-            theme,
-            style: "1",
-            locale: "en",
-            support_host: "https://www.tradingview.com",
-            hide_top_toolbar: true,
-            hide_side_toolbar: true,
-            hide_legend: true,
-            save_image: false,
-            hide_volume: true,
-            studies: [{ id: "MAExp@tv-basicstudies", inputs: { length: 200 } }],
-          });
-
-          widgetContainer.appendChild(widgetDiv);
-          widgetContainer.appendChild(script);
-          cell.appendChild(widgetContainer);
-        }
-
-        function setupChartLoad() {
-          for (const cell of $$(".chart-cell[data-symbol]")) {
-            if (!cell || !cell.isConnected) continue;
-            if (cell.dataset.loaded === "1") continue;
-            cell.dataset.loaded = "1";
-            injectGridChartWidget(cell);
+          function enqueueCell(cell) {
+            if (!cell || cell.dataset.loaded === "1") return;
+            if (cell.dataset.queued === "1") return;
+            cell.dataset.queued = "1";
+            loadQueue.push(cell);
+            pumpQueue();
           }
-        }
 
-        function generateChartGrid() {
-          const main = $("#mainContent");
-          if (!main) return;
-          main.textContent = "";
+          function pumpQueue() {
+            if (queueRaf) return;
+            queueRaf = requestAnimationFrame(() => {
+              queueRaf = 0;
+              const BATCH = 3;
+              let n = 0;
+              while (loadQueue.length && n < BATCH) {
+                const cell = loadQueue.shift();
+                if (!cell || !cell.isConnected) continue;
+                cell.dataset.queued = "0";
+                if (cell.dataset.loaded === "1") continue;
+                injectCellWidget(cell);
+                n++;
+              }
+              if (loadQueue.length) pumpQueue();
+            });
+          }
 
-          const frag = document.createDocumentFragment();
+          function clearCellWidget(cell) {
+            const host = cell.querySelector(".chart-host");
+            if (host) host.textContent = "";
+            cell.dataset.loaded = "0";
+            cell.dataset.queued = "0";
+          }
 
-          for (let i = 0; i < SYMBOLS.length; i += 2) {
-            const section = document.createElement("div");
-            section.className = "chart-section";
-            section.id = `section-${Math.floor(i / 2) + 1}`;
+          function injectCellWidget(cell) {
+            const theme = getTheme();
+            const symbol = cell.dataset.symbol;
+            const interval = cell.dataset.interval;
 
-            for (let j = 0; j < 2 && i + j < SYMBOLS.length; j++) {
-              const sym = SYMBOLS[i + j];
-              const row = document.createElement("div");
-              row.className = "chart-row";
-              row.dataset.symbol = sym.symbol;
+            const host = cell.querySelector(".chart-host");
+            if (!host) return;
 
-              const anchor = document.createElement("div");
-              anchor.className = "chart-row-anchor";
-              anchor.id = `anchor-${safeIdFromSymbol(sym.symbol)}`;
-              row.appendChild(anchor);
+            host.textContent = "";
 
-              for (const tf of TIMEFRAMES) {
-                const cell = document.createElement("div");
-                cell.className = "chart-cell";
-                cell.dataset.symbol = sym.symbol;
-                cell.dataset.interval = tf.interval;
-                cell.dataset.loaded = "0";
+            const widgetContainer = document.createElement("div");
+            widgetContainer.className = "tradingview-widget-container";
+            widgetContainer.style.cssText = "height:100%;width:100%;";
 
-                const watermark = document.createElement("div");
-                watermark.className = "watermark";
-                watermark.innerHTML = `${sym.name}<span class="tf">${tf.label}</span>`;
-                watermark.addEventListener("click", () => openPopup(sym.symbol, sym.name));
+            const widgetDiv = document.createElement("div");
+            widgetDiv.className = "tradingview-widget-container__widget";
+            widgetDiv.style.cssText = "height:100%;width:100%;";
 
-                const tfSquare = document.createElement("div");
-                tfSquare.className = "tf-square";
-                tfSquare.textContent = tf.label;
-                tfSquare.title = `Open ${sym.name} ${tf.label}`;
-                tfSquare.addEventListener("click", (e) => {
-                  e.stopPropagation();
-                  openTfPopup(sym.symbol, sym.name, tf.interval, tf.label);
-                });
+            const script = document.createElement("script");
+            script.type = "text/javascript";
+            script.src = TV_CHART_EMBED_URL;
+            script.async = true;
+            script.textContent = JSON.stringify({
+              autosize: true,
+              symbol,
+              interval,
+              timezone: "Etc/UTC",
+              theme,
+              style: "1",
+              locale: "en",
+              support_host: "https://www.tradingview.com",
+              hide_top_toolbar: true,
+              hide_side_toolbar: true,
+              hide_legend: true,
+              save_image: false,
+              hide_volume: true,
+              studies: [{ id: "MAExp@tv-basicstudies", inputs: { length: 200 } }],
+            });
 
-                const wmRow = document.createElement("div");
-                wmRow.className = "wm-row";
-                wmRow.appendChild(watermark);
-                wmRow.appendChild(tfSquare);
+            widgetContainer.appendChild(widgetDiv);
+            widgetContainer.appendChild(script);
+            host.appendChild(widgetContainer);
 
-                cell.appendChild(wmRow);
-                row.appendChild(cell);
+            cell.dataset.loaded = "1";
+            cell.dataset.theme = theme;
+          }
+
+          function buildGrid() {
+            const main = $("#mainContent");
+            if (!main) return;
+
+            main.textContent = "";
+            const frag = document.createDocumentFragment();
+
+            for (let i = 0; i < SYMBOLS.length; i += 2) {
+              const section = document.createElement("div");
+              section.className = "chart-section";
+              section.id = `section-${Math.floor(i / 2) + 1}`;
+
+              for (let j = 0; j < 2 && i + j < SYMBOLS.length; j++) {
+                const sym = SYMBOLS[i + j];
+                const row = document.createElement("div");
+                row.className = "chart-row";
+                row.dataset.symbol = sym.symbol;
+
+                const anchor = document.createElement("div");
+                anchor.className = "chart-row-anchor";
+                anchor.id = `anchor-${safeIdFromSymbol(sym.symbol)}`;
+                row.appendChild(anchor);
+
+                for (const tf of TIMEFRAMES) {
+                  const cell = document.createElement("div");
+                  cell.className = "chart-cell";
+                  cell.dataset.symbol = sym.symbol;
+                  cell.dataset.interval = tf.interval;
+                  cell.dataset.loaded = "0";
+                  cell.dataset.queued = "0";
+                  cell.dataset.theme = "";
+
+                  const watermark = document.createElement("div");
+                  watermark.className = "watermark";
+                  watermark.innerHTML = `${sym.name}<span class="tf">${tf.label}</span>`;
+                  watermark.addEventListener("click", () => openPopup(sym.symbol, sym.name), { passive: true });
+
+                  const tfSquare = document.createElement("div");
+                  tfSquare.className = "tf-square";
+                  tfSquare.textContent = tf.label;
+                  tfSquare.title = `Open ${sym.name} ${tf.label}`;
+                  tfSquare.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    openTfPopup(sym.symbol, sym.name, tf.interval, tf.label);
+                  });
+
+                  const wmRow = document.createElement("div");
+                  wmRow.className = "wm-row";
+                  wmRow.appendChild(watermark);
+                  wmRow.appendChild(tfSquare);
+                  cell.appendChild(wmRow);
+
+                  const host = document.createElement("div");
+                  host.className = "chart-host";
+                  cell.appendChild(host);
+
+                  row.appendChild(cell);
+                }
+
+                section.appendChild(row);
               }
 
-              section.appendChild(row);
+              frag.appendChild(section);
             }
 
-            frag.appendChild(section);
+            main.appendChild(frag);
           }
 
-          main.appendChild(frag);
-          setupChartLoad(); // loads immediately (no lazy loading)
-        }
+          function setupObserver() {
+            if (io) {
+              try {
+                io.disconnect();
+              } catch {}
+              io = null;
+            }
 
-        /* ===================== Panel Management ===================== */
-        const panel = $("#sidePanel");
-        const panelTitle = $("#panelTitle");
-        const panelBody = $("#panelBody");
-        let currentPanel = null;
+            if (!("IntersectionObserver" in window)) {
+              const cells = $$(".chart-cell[data-symbol]");
+              cells.forEach((c, idx) => {
+                if (idx < 6) injectCellWidget(c);
+                else enqueueCell(c);
+              });
+              return;
+            }
 
-        const content = {
-          calendar: {
-            title: "Calendar",
-            icon: '<svg class="icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>',
-            html: `
-              <div class="calendar-container">
-                <div class="calendar-section"><div id="economic-calendar-widget"></div></div>
-                <div class="sessions-section">
-                  <div id="localClock" class="local-clock"></div>
-                  <div id="sessionContainer"></div>
-                  <div class="hour-labels" id="hourLabels"></div>
+            io = new IntersectionObserver(
+              (entries) => {
+                for (const entry of entries) {
+                  if (!entry.isIntersecting) continue;
+                  const cell = entry.target;
+                  if (cell.dataset.loaded === "1" && cell.dataset.theme !== getTheme()) {
+                    clearCellWidget(cell);
+                  }
+                  enqueueCell(cell);
+                }
+              },
+              {
+                root: $("#mainContent"),
+                rootMargin: "180px 0px 180px 0px",
+                threshold: 0.12,
+              }
+            );
+
+            $$(".chart-cell[data-symbol]").forEach((cell) => io.observe(cell));
+          }
+
+          function refreshThemeForVisibleCells() {
+            const main = $("#mainContent");
+            if (!main) return;
+
+            const mainRect = main.getBoundingClientRect();
+            const cells = $$(".chart-cell[data-symbol]");
+            for (const cell of cells) {
+              const rect = cell.getBoundingClientRect();
+              const visible = rect.bottom > mainRect.top && rect.top < mainRect.bottom;
+              if (!visible) continue;
+              if (cell.dataset.loaded === "1" && cell.dataset.theme !== getTheme()) {
+                clearCellWidget(cell);
+                enqueueCell(cell);
+              }
+            }
+          }
+
+          function rebuildWithPreservedScroll() {
+            const main = $("#mainContent");
+            const scrollTop = main ? main.scrollTop : 0;
+            buildGrid();
+            setupObserver();
+            if (main) main.scrollTop = scrollTop;
+            refreshThemeForVisibleCells();
+          }
+
+          return {
+            build: rebuildWithPreservedScroll,
+            setupObserver,
+            refreshVisible: refreshThemeForVisibleCells,
+          };
+        })();
+
+        /* ===================== Panel Management (leak-free) ===================== */
+        const Panel = (() => {
+          const panel = $("#sidePanel");
+          const panelTitle = $("#panelTitle");
+          const panelBody = $("#panelBody");
+
+          let currentKey = null;
+          let cleanupFn = null;
+
+          const content = {
+            calendar: {
+              title: "Calendar",
+              icon: '<svg class="icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>',
+              html: `
+                <div class="calendar-container" id="calendarRoot">
+                  <div class="calendar-section"><div id="economic-calendar-widget"></div></div>
+                  <div class="sessions-section" id="sessionsSection">
+                    <div id="localClock" class="local-clock"></div>
+                    <div id="sessionContainer"></div>
+                    <div class="hour-labels" id="hourLabels"></div>
+                  </div>
                 </div>
-              </div>
-            `,
-          },
-          news: {
-            title: "News",
-            icon: '<svg class="icon" viewBox="0 0 24 24"><path d="M4 22h16a2 2 0 002-2V4a2 2 0 00-2-2H8a2 2 0 00-2 2v16a2 2 0 01-2 2zm0 0a2 2 0 01-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M10 6h8M10 10h8M10 14h4"/></svg>',
-            html: `
-              <div class="news-container" id="newsContainer">
-                <div class="news-header">
-                  <div class="news-header-top">
-                    <div class="news-status-wrap" id="newsStatusWrap">
-                      <span id="newsStatusText">Loading...</span>
-                      <span id="sourceFilters"></span>
+              `,
+              init: initCalendarPanel,
+            },
+            news: {
+              title: "News",
+              icon: '<svg class="icon" viewBox="0 0 24 24"><path d="M4 22h16a2 2 0 002-2V4a2 2 0 00-2-2H8a2 2 0 00-2 2v16a2 2 0 01-2 2zm0 0a2 2 0 01-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M10 6h8M10 10h8M10 14h4"/></svg>',
+              html: `
+                <div class="news-container" id="newsContainer">
+                  <div class="news-header">
+                    <div class="news-header-row1">
+                      <div class="news-tabs" id="newsTabs" aria-label="News tabs">
+                        <button class="tab-btn" type="button" data-tab="news">News</button>
+                        <button class="tab-btn" type="button" data-tab="forex">Forex</button>
+                        <button class="tab-btn" type="button" data-tab="crypto">Crypto</button>
+                        <button class="tab-btn" type="button" data-tab="arabic">Arabic</button>
+                      </div>
+
+                      <div class="news-status-pill" id="newsStatusWrap" aria-live="polite">
+                        <span id="newsStatusText">Loading...</span>
+                      </div>
+
+                      <div class="news-controls">
+                        <button id="favOnly" class="news-btn" type="button" title="Show favorites only" aria-label="Toggle favorites only">★ Fav</button>
+                        <button id="newOnly" class="news-btn" type="button" title="Show NEW only (last 6h)" aria-label="Toggle new-only">NEW</button>
+                        <button id="fontDown" class="news-btn" type="button" title="Decrease font" aria-label="Decrease font">A-</button>
+                        <button id="fontUp" class="news-btn" type="button" title="Increase font" aria-label="Increase font">A+</button>
+                        <button id="refreshNews" class="news-btn" type="button" aria-label="Refresh news">↻ Refresh</button>
+                      </div>
                     </div>
 
-                    <div class="news-controls">
-                      <button id="fontDown" class="news-btn" title="Decrease font" aria-label="Decrease font">A-</button>
-                      <button id="fontUp" class="news-btn" title="Increase font" aria-label="Increase font">A+</button>
-                      <button id="refreshNews" class="news-btn" aria-label="Refresh news">↻ Refresh</button>
+                    <div class="news-header-row2" aria-label="Search and filters">
+                      <div class="search-wrap">
+                        <input
+                          id="newsSearch"
+                          class="search-input"
+                          type="text"
+                          placeholder="Filter: EURUSD, Gold, CPI, Powell… (comma-separated)"
+                          autocomplete="off"
+                          spellcheck="false"
+                        />
+                        <span class="search-hint" id="searchHint">Tip: multiple terms = AND</span>
+                      </div>
+
+                      <div class="filters-wrap" id="sourceFilters" aria-label="Source filters"></div>
                     </div>
                   </div>
 
-                  <div class="quickbar" aria-label="Search">
-                    <div class="search-wrap">
-                      <input
-                        id="newsSearch"
-                        class="search-input"
-                        type="text"
-                        placeholder="Filter: EURUSD, Gold, CPI, Powell… (comma-separated)"
-                        autocomplete="off"
-                        spellcheck="false"
-                      />
-                      <span class="search-hint" id="searchHint">Tip: multiple terms = AND</span>
-                    </div>
-                  </div>
+                  <ul id="newsList" class="news-list" aria-label="News list"></ul>
                 </div>
+              `,
+              init: initNewsPanel,
+            },
+            heatmap: {
+              title: "Forex Heatmap",
+              icon: '<svg class="icon" viewBox="0 0 24 24"><path d="M12 2s2.8 3 2.8 6.2c0 1.4-.6 2.6-1.4 3.5-.9 1-2 1.9-2 3.6 0 1.7 1.3 3 3 3 2.6 0 4.6-2.2 4.6-5.1 0-2.2-1.1-4-2.5-5.6"/><path d="M10.4 7.2S7.6 9.8 7.6 13c0 2.9 2 5 4.7 5 1.9 0 3.4-1.4 3.4-3.3 0-1.3-.7-2.2-1.5-3.1-.7-.8-1.4-1.6-1.4-2.8"/></svg>',
+              html: `<div class="heatmap-wrap"><div id="heatmapWidget"></div></div>`,
+              init: initHeatmapPanel,
+            },
+          };
 
-                <ul id="newsList" class="news-list" aria-label="News list"></ul>
-              </div>
-            `,
-          },
-          heatmap: {
-            title: "Forex Heatmap",
-            icon: '<svg class="icon" viewBox="0 0 24 24"><path d="M12 2s2.8 3 2.8 6.2c0 1.4-.6 2.6-1.4 3.5-.9 1-2 1.9-2 3.6 0 1.7 1.3 3 3 3 2.6 0 4.6-2.2 4.6-5.1 0-2.2-1.1-4-2.5-5.6"/><path d="M10.4 7.2S7.6 9.8 7.6 13c0 2.9 2 5 4.7 5 1.9 0 3.4-1.4 3.4-3.3 0-1.3-.7-2.2-1.5-3.1-.7-.8-1.4-1.6-1.4-2.8"/></svg>',
-            html: `
-              <div class="heatmap-wrap"><div id="heatmapWidget"></div></div>
-            `,
-          },
-        };
-
-        function setPanelOpen(isOpen) {
-          if (!panel) return;
-          panel.classList.toggle("open", isOpen);
-          panel.setAttribute("aria-hidden", String(!isOpen));
-        }
-
-        function closePanel() {
-          cleanupPanelSideEffects();
-          setPanelOpen(false);
-          currentPanel = null;
-          for (const b of $$(".dock-btn[data-panel]")) b.classList.remove("active");
-        }
-
-        function renderNewsTabsInTitle() {
-          // Title area tabs beside "News"
-          return `
-            <div class="panel-tabs" id="newsTabs" aria-label="News tabs">
-              <button class="tab-btn" type="button" data-tab="news">News</button>
-              <button class="tab-btn" type="button" data-tab="forex">Forex</button>
-              <button class="tab-btn" type="button" data-tab="crypto">Crypto</button>
-              <button class="tab-btn" type="button" data-tab="arabic">Arabic</button>
-            </div>
-          `;
-        }
-
-        function openPanel(key) {
-          const data = content[key];
-          if (!data || !panel || !panelTitle || !panelBody) return;
-
-          if (currentPanel === key) {
-            closePanel();
-            return;
+          function setOpen(isOpen) {
+            if (!panel) return;
+            panel.classList.toggle("open", isOpen);
+            panel.setAttribute("aria-hidden", String(!isOpen));
           }
 
-          cleanupPanelSideEffects();
-          setPanelOpen(true);
-
-          if (key === "news") {
-            panelTitle.innerHTML = `${data.icon}<span>News</span>${renderNewsTabsInTitle()}`;
-          } else {
-            panelTitle.innerHTML = `${data.icon}<span>${data.title}</span>`;
-          }
-
-          panelBody.innerHTML = data.html;
-          currentPanel = key;
-
-          for (const b of $$(".dock-btn[data-panel]")) {
-            b.classList.toggle("active", b.dataset.panel === key);
-          }
-
-          if (key === "news") initNewsPanel();
-          if (key === "calendar") initCalendarPanel();
-          if (key === "heatmap") initHeatmapPanel();
-        }
-
-        /* ===================== Panel Side-Effect Cleanup ===================== */
-        let calendarSessionsInterval = 0;
-        let calendarClockInterval = 0;
-        let newsIntervalId = 0;
-        let newsAbortController = null;
-
-        function cleanupPanelSideEffects() {
-          if (calendarSessionsInterval) clearInterval(calendarSessionsInterval);
-          if (calendarClockInterval) clearInterval(calendarClockInterval);
-          calendarSessionsInterval = 0;
-          calendarClockInterval = 0;
-
-          if (newsIntervalId) clearInterval(newsIntervalId);
-          newsIntervalId = 0;
-
-          if (newsAbortController) {
+          function close() {
             try {
-              newsAbortController.abort();
+              if (typeof cleanupFn === "function") cleanupFn();
             } catch {}
+            cleanupFn = null;
+
+            setOpen(false);
+            currentKey = null;
+            for (const b of $$(".dock-btn[data-panel]")) b.classList.remove("active");
           }
-          newsAbortController = null;
-        }
+
+          function open(key) {
+            const data = content[key];
+            if (!data || !panel || !panelTitle || !panelBody) return;
+
+            if (currentKey === key) {
+              close();
+              return;
+            }
+
+            try {
+              if (typeof cleanupFn === "function") cleanupFn();
+            } catch {}
+            cleanupFn = null;
+
+            setOpen(true);
+
+            panelTitle.innerHTML = `${data.icon}<span>${data.title}</span>`;
+            panelBody.innerHTML = data.html;
+            currentKey = key;
+
+            for (const b of $$(".dock-btn[data-panel]")) {
+              b.classList.toggle("active", b.dataset.panel === key);
+            }
+
+            cleanupFn = typeof data.init === "function" ? data.init() : null;
+          }
+
+          function isOpenKey(key) {
+            return currentKey === key && panel && panel.classList.contains("open");
+          }
+
+          function current() {
+            return currentKey;
+          }
+
+          return { open, close, isOpenKey, current };
+        })();
 
         /* ===================== Dock bindings ===================== */
         function toggleTheme() {
@@ -2148,17 +2355,14 @@
           const next = current === "dark" ? "light" : "dark";
           document.documentElement.setAttribute("data-theme", next);
           safeStorageSet("theme", next);
-
           updateThemeIcon();
 
-          closePopup();
-          closeTfPopup();
-          generateChartGrid();
+          ChartGrid.refreshVisible();
 
-          if (currentPanel) {
-            const p = currentPanel;
-            currentPanel = null;
-            openPanel(p);
+          const cur = Panel.current();
+          if (cur === "heatmap" || cur === "calendar") {
+            Panel.open(cur);
+            Panel.open(cur);
           }
 
           refreshTickersSoft();
@@ -2173,7 +2377,7 @@
             if (!btn) return;
 
             if (btn.dataset.panel) {
-              openPanel(btn.dataset.panel);
+              Panel.open(btn.dataset.panel);
               return;
             }
             if (btn.dataset.action === "refresh") {
@@ -2186,21 +2390,17 @@
             }
           });
 
-          const closeBtn = $("#closePanel");
-          if (closeBtn) closeBtn.addEventListener("click", closePanel);
+          $("#closePanel")?.addEventListener("click", () => Panel.close());
 
           updateThemeIcon();
         }
 
-        /* ===================== Calendar panel ===================== */
+        /* ===================== Calendar panel (dynamic to zoom) ===================== */
         let fxVerifyScriptLoaded = false;
         let fxVerifyScriptLoading = false;
 
         function loadFxVerifyScript(cb) {
-          if (fxVerifyScriptLoaded) {
-            cb();
-            return;
-          }
+          if (fxVerifyScriptLoaded) return void cb();
           if (fxVerifyScriptLoading) {
             const t = setInterval(() => {
               if (fxVerifyScriptLoaded) {
@@ -2211,6 +2411,7 @@
             return;
           }
           fxVerifyScriptLoading = true;
+
           const existing = document.getElementById("fxVerifyCalendarScript");
           if (existing) {
             fxVerifyScriptLoaded = true;
@@ -2218,6 +2419,7 @@
             cb();
             return;
           }
+
           const script = document.createElement("script");
           script.id = "fxVerifyCalendarScript";
           script.src = "https://fxverify.com/Content/remote/remote-calendar-widget.js";
@@ -2232,7 +2434,18 @@
           document.head.appendChild(script);
         }
 
+        function setCalendarSessionsHeight(px) {
+          const v = clamp(px, 140, 420);
+          document.documentElement.style.setProperty("--calendar-sessions-h", `${Math.round(v)}px`);
+        }
+
         function initCalendarPanel() {
+          const disposers = [];
+          const add = (fn) => disposers.push(fn);
+
+          let sessionsInterval = 0;
+          let clockInterval = 0;
+
           const sessions = [
             { id: "sydney", name: "Sydney", startUTC: 22, endUTC: 7, timezone: "Australia/Sydney" },
             { id: "tokyo", name: "Tokyo", startUTC: 0, endUTC: 9, timezone: "Asia/Tokyo" },
@@ -2240,32 +2453,36 @@
             { id: "newyork", name: "New York", startUTC: 13, endUTC: 22, timezone: "America/New_York" },
           ];
 
-          function getTimezoneOffsetHours() {
-            return -new Date().getTimezoneOffset() / 60;
+          function isForexMarketOpenUtc(now = new Date()) {
+            const day = now.getUTCDay();
+            const hour = now.getUTCHours() + now.getUTCMinutes() / 60;
+            if (day === 6) return false;
+            if (day === 0 && hour < 22) return false;
+            if (day === 5 && hour >= 22) return false;
+            return true;
           }
-          function isSessionOpen(session) {
-            const now = new Date();
+
+          function isSessionOpen(session, now = new Date()) {
             const utcHour = now.getUTCHours() + now.getUTCMinutes() / 60;
             if (session.startUTC > session.endUTC) return utcHour >= session.startUTC || utcHour < session.endUTC;
             return utcHour >= session.startUTC && utcHour < session.endUTC;
           }
-          function isWeekend() {
-            const now = new Date();
-            const day = now.getUTCDay();
-            const hour = now.getUTCHours();
-            if (day === 6) return true;
-            if (day === 0 && hour < 22) return true;
-            if (day === 5 && hour >= 22) return true;
-            return false;
+
+          function getLocalTime(tz) {
+            return new Date().toLocaleTimeString("en-US", {
+              hour: "2-digit",
+              minute: "2-digit",
+              hour12: false,
+              timeZone: tz,
+            });
           }
-          function getLocalTime(timezone) {
-            return new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: timezone });
-          }
+
           function renderClock() {
             const clock = $("#localClock");
             if (!clock) return;
             clock.textContent = new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true });
           }
+
           function renderHourLabels() {
             const container = $("#hourLabels");
             if (!container) return;
@@ -2276,57 +2493,76 @@
               container.appendChild(span);
             }
           }
+
+          function getSessionLocalHours(session, now = new Date()) {
+            const y = now.getUTCFullYear();
+            const m = now.getUTCMonth();
+            const d = now.getUTCDate();
+
+            const startUtc = new Date(Date.UTC(y, m, d, session.startUTC, 0, 0));
+            let endUtc = new Date(Date.UTC(y, m, d, session.endUTC, 0, 0));
+            if (session.startUTC > session.endUTC) endUtc = new Date(Date.UTC(y, m, d + 1, session.endUTC, 0, 0));
+
+            const startLocal = startUtc.getHours() + startUtc.getMinutes() / 60;
+            const endLocal = endUtc.getHours() + endUtc.getMinutes() / 60;
+
+            const start = ((startLocal % 24) + 24) % 24;
+            const end = ((endLocal % 24) + 24) % 24;
+
+            return { start, end };
+          }
+
           function renderSessions() {
             const container = $("#sessionContainer");
             if (!container) return;
             container.textContent = "";
 
-            const offset = getTimezoneOffsetHours();
-            for (const session of sessions) {
-              const open = isSessionOpen(session) && !isWeekend();
-              const localTime = getLocalTime(session.timezone);
+            const now = new Date();
+            const marketOpen = isForexMarketOpenUtc(now);
 
-              let startLocal = (session.startUTC + offset) % 24;
-              let endLocal = (session.endUTC + offset) % 24;
-              if (startLocal < 0) startLocal += 24;
-              if (endLocal < 0) endLocal += 24;
+            for (const session of sessions) {
+              const open = marketOpen && isSessionOpen(session, now);
+              const localTime = getLocalTime(session.timezone);
+              const { start, end } = getSessionLocalHours(session, now);
 
               const row = document.createElement("div");
               row.className = "session-row";
 
               const label = document.createElement("div");
               label.className = "session-label";
+
               const name = document.createElement("span");
               name.textContent = session.name;
+
               const time = document.createElement("span");
               time.className = "time";
               time.textContent = localTime;
+
               label.appendChild(name);
               label.appendChild(time);
 
               const barContainer = document.createElement("div");
               barContainer.className = "session-bar-container";
 
-              const startPercent = (startLocal / 24) * 100;
-              const endPercent = (endLocal / 24) * 100;
+              const startPercent = (start / 24) * 100;
+              const endPercent = (end / 24) * 100;
 
-              if (startLocal > endLocal) {
+              if (start > end) {
                 const a = document.createElement("div");
                 a.className = `session-bar ${session.id} ${open ? "" : "inactive"}`;
-                a.style.cssText = `left:${startPercent}%;width:${100 - startPercent}%;border-radius:3px 0 0 3px;`;
+                a.style.cssText = `left:${startPercent}%;width:${100 - startPercent}%;border-radius:6px 0 0 6px;`;
                 const b = document.createElement("div");
                 b.className = `session-bar ${session.id} ${open ? "" : "inactive"}`;
-                b.style.cssText = `left:0;width:${endPercent}%;border-radius:0 3px 3px 0;`;
+                b.style.cssText = `left:0;width:${endPercent}%;border-radius:0 6px 6px 0;`;
                 barContainer.appendChild(a);
                 barContainer.appendChild(b);
               } else {
                 const bar = document.createElement("div");
                 bar.className = `session-bar ${session.id} ${open ? "" : "inactive"}`;
-                bar.style.cssText = `left:${startPercent}%;width:${endPercent - startPercent}%;border-radius:3px;`;
+                bar.style.cssText = `left:${startPercent}%;width:${Math.max(0, endPercent - startPercent)}%;border-radius:6px;`;
                 barContainer.appendChild(bar);
               }
 
-              const now = new Date();
               const localHour = now.getHours() + now.getMinutes() / 60;
               const markerPercent = (localHour / 24) * 100;
               const marker = document.createElement("div");
@@ -2341,12 +2577,61 @@
             }
           }
 
+          function adjustCalendarLayout() {
+            const panel = $("#sidePanel");
+            const sessionsSection = $("#sessionsSection");
+            const sessionContainer = $("#sessionContainer");
+            const clock = $("#localClock");
+            const hourLabels = $("#hourLabels");
+            if (!panel || !sessionsSection || !sessionContainer) return;
+
+            const panelBody = $("#panelBody");
+            const bodyH = panelBody ? panelBody.clientHeight : panel.clientHeight;
+
+            const minH = 140;
+            const maxH = clamp(Math.floor(bodyH * 0.44), 160, 420);
+
+            const contentNeed =
+              (clock ? clock.scrollHeight : 0) +
+              (hourLabels ? hourLabels.scrollHeight : 0) +
+              sessionContainer.scrollHeight +
+              8 +
+              24;
+
+            const ideal = clamp(contentNeed, minH, maxH);
+            const ensureCalendarMin = Math.floor(bodyH * 0.45);
+            const finalH = clamp(ideal, minH, Math.max(minH, bodyH - ensureCalendarMin));
+
+            setCalendarSessionsHeight(finalH);
+          }
+
           renderHourLabels();
           renderClock();
           renderSessions();
 
-          calendarClockInterval = setInterval(renderClock, 1000);
-          calendarSessionsInterval = setInterval(renderSessions, 60000);
+          adjustCalendarLayout();
+          setTimeout(adjustCalendarLayout, 150);
+
+          clockInterval = window.setInterval(renderClock, 1000);
+          sessionsInterval = window.setInterval(() => {
+            renderSessions();
+            adjustCalendarLayout();
+          }, 60000);
+
+          add(() => clockInterval && clearInterval(clockInterval));
+          add(() => sessionsInterval && clearInterval(sessionsInterval));
+
+          const onResize = () => {
+            renderHourLabels();
+            adjustCalendarLayout();
+          };
+          window.addEventListener("resize", onResize, { passive: true });
+          window.visualViewport?.addEventListener("resize", onResize, { passive: true });
+          document.addEventListener("ui:zoomchange", onResize);
+
+          add(() => window.removeEventListener("resize", onResize));
+          add(() => window.visualViewport?.removeEventListener("resize", onResize));
+          add(() => document.removeEventListener("ui:zoomchange", onResize));
 
           const theme = getTheme();
           const calContainer = $("#economic-calendar-widget");
@@ -2354,22 +2639,37 @@
 
           loadFxVerifyScript(() => {
             if (typeof RemoteCalendar !== "undefined") {
-              RemoteCalendar({
-                DefaultTime: "today",
-                DefaultTheme: theme === "dark" ? "dark" : "plain",
-                Url: "https://fxverify.com",
-                SubPath: "economic-calendar",
-                IsShowEmbedButton: false,
-                DefaultCountries: "AU,CA,CH,CN,DE,FR,IT,ES,US,GB,NZ,JP,EU",
-                DefaultImpacts: "HIGH",
-                ContainerId: "economic-calendar-widget",
-              });
+              try {
+                RemoteCalendar({
+                  DefaultTime: "today",
+                  DefaultTheme: theme === "dark" ? "dark" : "plain",
+                  Url: "https://fxverify.com",
+                  SubPath: "economic-calendar",
+                  IsShowEmbedButton: false,
+                  DefaultCountries: "AU,CA,CH,CN,DE,FR,IT,ES,US,GB,NZ,JP,EU",
+                  DefaultImpacts: "HIGH",
+                  ContainerId: "economic-calendar-widget",
+                });
+              } catch (e) {
+                console.error("RemoteCalendar init error:", e);
+              }
             }
           });
+
+          return () => {
+            for (const d of disposers) {
+              try {
+                d();
+              } catch {}
+            }
+          };
         }
 
-        /* ===================== News panel (REPLACED with new full version) ===================== */
+        /* ===================== News panel (working version you provided) ===================== */
         function initNewsPanel() {
+          const disposers = [];
+          const add = (fn) => disposers.push(fn);
+
           const TAB_FEEDS = {
             news: [
               { name: "InvestingLive", kind: "News", url: "https://investinglive.com/feed/news/" },
@@ -2383,11 +2683,13 @@
             arabic: [{ name: "FXStreet", kind: "News", url: "https://ar.fxstreet.com/rss/news" }],
           };
 
-          // Cache & limits
-          const CACHE_TTL_MS = 45 * 1000;
-          const MAX_ITEMS_PER_FEED = 100;
+          const CACHE_TTL_MS = 55 * 1000;
+          const LS_TTL_MS = 10 * 60 * 1000;
+          const MAX_ITEMS_PER_FEED = 120;
+          const MAX_LS_ITEMS = 240;
+          const NEW_HOURS = 6;
+          const CONCURRENCY = 2;
 
-          // Requested meta format: 14/01/26, 14:20
           const dateFmtWithTime = new Intl.DateTimeFormat("en-GB", {
             day: "2-digit",
             month: "2-digit",
@@ -2396,20 +2698,6 @@
             minute: "2-digit",
           });
 
-          // Persisted state per tab
-          let currentTab = safeStorageGet("newsTab", "news") || "news";
-          if (!TAB_FEEDS[currentTab]) currentTab = "news";
-
-          let currentKindFilter = safeStorageGet("newsKindFilter:" + currentTab, "ALL") || "ALL";
-          let currentTextFilter = safeStorageGet("newsTextFilter:" + currentTab, "") || "";
-
-          // Progressive load token
-          let activeLoadToken = 0;
-
-          // Cache by tab
-          const tabItemsCache = new Map();
-
-          // Favorites
           const FAV_KEY = "newsFavorites";
           function loadFavorites() {
             try {
@@ -2425,7 +2713,11 @@
               safeStorageSet(FAV_KEY, JSON.stringify(Array.from(set)));
             } catch {}
           }
+
           let favorites = loadFavorites();
+          let favOnly = safeStorageGet("newsFavOnly", "0") === "1";
+          let newOnly = safeStorageGet("newsNewOnly", "0") === "1";
+
           function isFavorited(link) {
             return favorites.has(link);
           }
@@ -2436,6 +2728,26 @@
             saveFavorites(favorites);
           }
 
+          let currentTab = safeStorageGet("newsTab", "news") || "news";
+          if (!TAB_FEEDS[currentTab]) currentTab = "news";
+
+          let currentKindFilter = safeStorageGet("newsKindFilter:" + currentTab, "ALL") || "ALL";
+          let currentTextFilter = safeStorageGet("newsTextFilter:" + currentTab, "") || "";
+
+          let activeLoadToken = 0;
+          const tabItemsCache = new Map();
+
+          let intervalId = 0;
+          let abort = null;
+
+          const statusText = $("#newsStatusText");
+          const list = $("#newsList");
+          const sourceFilters = $("#sourceFilters");
+          const input = $("#newsSearch");
+          const hint = $("#searchHint");
+          const favBtn = $("#favOnly");
+          const newBtn = $("#newOnly");
+
           function setNewsRtl(isRtl) {
             const container = $("#newsContainer");
             if (!container) return;
@@ -2444,14 +2756,6 @@
             container.setAttribute("lang", isRtl ? "ar" : "en");
           }
 
-          function stripHtml(html) {
-            const doc = new DOMParser().parseFromString(html || "", "text/html");
-            return (doc.body.textContent || "").replace(/\s+/g, " ").trim();
-          }
-          function truncate(text, maxLen = 300) {
-            if (!text || text.length <= maxLen) return text;
-            return text.slice(0, maxLen - 1).trimEnd() + "…";
-          }
           function safeUrl(url) {
             try {
               const u = new URL(url, location.href);
@@ -2461,9 +2765,21 @@
               return "#";
             }
           }
+
           function parsePubDate(pubDateText) {
             const d = pubDateText ? new Date(pubDateText) : new Date(0);
             return Number.isNaN(d.getTime()) ? new Date(0) : d;
+          }
+
+          const htmlStripper = document.createElement("div");
+          function stripHtml(html) {
+            htmlStripper.innerHTML = html || "";
+            return (htmlStripper.textContent || "").replace(/\s+/g, " ").trim();
+          }
+
+          function truncate(text, maxLen = 300) {
+            if (!text || text.length <= maxLen) return text;
+            return text.slice(0, maxLen - 1).trimEnd() + "…";
           }
 
           function makeItemKey(it) {
@@ -2491,97 +2807,291 @@
             return Array.from(map.values());
           }
 
-          // Promise.any polyfill
-          function promiseAny(promises) {
-            if (Promise.any) return Promise.any(promises);
+          function normalizeToken(s) {
+            return String(s || "")
+              .toUpperCase()
+              .replace(/[^A-Z0-9\u0600-\u06FF]+/g, "");
+          }
+          function buildSearchBlob(item) {
+            return normalizeToken((item?.title || "") + " " + (item?.description || ""));
+          }
+          function parseTextTerms(text) {
+            const raw = String(text || "").trim();
+            if (!raw) return [];
+            return raw
+              .split(",")
+              .map((x) => x.trim())
+              .filter(Boolean)
+              .slice(0, 12);
+          }
+          function matchTextTerms(item, terms) {
+            if (!terms.length) return true;
+            const blob = buildSearchBlob(item);
+            return terms.every((t) => blob.includes(normalizeToken(t)));
+          }
+
+          function isNewItem(pubDate, hours = NEW_HOURS) {
+            if (!(pubDate instanceof Date)) return false;
+            const ageMs = Date.now() - pubDate.getTime();
+            return ageMs >= 0 && ageMs <= hours * 60 * 60 * 1000;
+          }
+
+          function filterItems(items) {
+            let out = Array.isArray(items) ? items : [];
+            if (favOnly) out = out.filter((x) => isFavorited(x.link));
+            if (newOnly) out = out.filter((x) => isNewItem(x.pubDate, NEW_HOURS));
+
+            if (currentTab !== "arabic" && currentKindFilter && currentKindFilter !== "ALL") {
+              out = out.filter((x) => String(x.kind || "").toLowerCase() === String(currentKindFilter).toLowerCase());
+            }
+
+            const terms = parseTextTerms(currentTextFilter);
+            if (terms.length) out = out.filter((x) => matchTextTerms(x, terms));
+            return out;
+          }
+
+          function syncSearchUi() {
+            if (input) input.value = currentTextFilter || "";
+            const terms = parseTextTerms(currentTextFilter);
+            if (hint) hint.textContent = terms.length ? `Terms: ${terms.join(", ")} (AND)` : "Tip: multiple terms = AND";
+          }
+
+          function updateToggleButtons() {
+            if (favBtn) favBtn.classList.toggle("toggled", favOnly);
+            if (newBtn) newBtn.classList.toggle("toggled", newOnly);
+          }
+
+          function setStatus(allCount, filteredCount, completed, total, startedAt, note = "") {
+            if (!statusText) return;
+            const secs = startedAt ? ((Date.now() - startedAt) / 1000).toFixed(1) : "0.0";
+            const online = navigator.onLine !== false;
+            const net = online ? "" : " • OFFLINE";
+            const extra = note ? ` • ${note}` : "";
+            statusText.textContent = `${filteredCount}/${allCount} items • ${completed}/${total} feeds • ${secs}s${extra}${net}`;
+          }
+
+          function render(items) {
+            if (!list) return;
+            list.textContent = "";
+
+            const frag = document.createDocumentFragment();
+
+            for (const it of items) {
+              const li = document.createElement("li");
+              li.className = "news-item";
+
+              const titleRow = document.createElement("div");
+              titleRow.className = "news-title-row";
+
+              const a = document.createElement("a");
+              a.href = it.link;
+              a.target = "_blank";
+              a.rel = "noopener noreferrer";
+              a.textContent = it.title;
+              titleRow.appendChild(a);
+
+              if (it.kind) {
+                const chip = document.createElement("span");
+                chip.className = "news-meta";
+                chip.textContent = it.kind;
+                titleRow.appendChild(chip);
+              }
+
+              if (isNewItem(it.pubDate, NEW_HOURS)) {
+                const nb = document.createElement("span");
+                nb.className = "badge-new";
+                nb.textContent = "NEW";
+                titleRow.appendChild(nb);
+              }
+
+              const meta = document.createElement("span");
+              meta.className = "news-meta";
+              meta.textContent = `${it.source} • ${dateFmtWithTime.format(it.pubDate)}`;
+              titleRow.appendChild(meta);
+
+              const star = document.createElement("button");
+              const active = isFavorited(it.link);
+              star.className = "star-btn" + (active ? " active" : "");
+              star.type = "button";
+              star.title = active ? "Remove from favorites" : "Add to favorites";
+              star.setAttribute("aria-label", "Toggle favorite");
+              star.innerHTML = `
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 17.27l5.18 3.04-1.39-5.97L20 9.24l-6.19-.53L12 3 10.19 8.71 4 9.24l4.21 5.1-1.39 5.97L12 17.27z"></path>
+                </svg>
+              `;
+              star.addEventListener("click", (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                toggleFavorite(it.link);
+                if (favOnly) applyRender(false);
+                else star.classList.toggle("active", isFavorited(it.link));
+              });
+              titleRow.appendChild(star);
+
+              li.appendChild(titleRow);
+
+              if (it.description) {
+                const p = document.createElement("p");
+                p.className = "news-desc";
+                p.textContent = it.description;
+                li.appendChild(p);
+              }
+
+              frag.appendChild(li);
+            }
+
+            list.appendChild(frag);
+          }
+
+          function applyRender(scrollTop = false, note = "") {
+            const cached = tabItemsCache.get(currentTab);
+            if (!cached || !Array.isArray(cached.items)) return;
+
+            const filtered = filterItems(cached.items);
+            render(filtered);
+
+            setStatus(
+              cached.items.length,
+              filtered.length,
+              cached.completedFeeds || 0,
+              cached.totalFeeds || 0,
+              cached.startedAt || 0,
+              note
+            );
+
+            if (scrollTop && list) list.scrollTo({ top: 0, behavior: "smooth" });
+          }
+
+          function abortInFlight() {
+            if (abort) {
+              try {
+                abort.abort();
+              } catch {}
+            }
+            abort = null;
+          }
+
+          function lsKeyForTab(tab) {
+            return `newsCache:${tab}`;
+          }
+          function saveTabToLocalStorage(tab, items) {
+            try {
+              const payload = {
+                fetchedAt: Date.now(),
+                items: (items || []).slice(0, MAX_LS_ITEMS).map((it) => ({
+                  source: it.source,
+                  kind: it.kind,
+                  title: it.title,
+                  link: it.link,
+                  pubDateTs: it.pubDate instanceof Date ? it.pubDate.getTime() : 0,
+                  description: it.description,
+                })),
+              };
+              safeStorageSet(lsKeyForTab(tab), JSON.stringify(payload));
+            } catch {}
+          }
+          function loadTabFromLocalStorage(tab) {
+            try {
+              const raw = safeStorageGet(lsKeyForTab(tab), null);
+              if (!raw) return null;
+              const obj = JSON.parse(raw);
+              if (!obj || !Array.isArray(obj.items) || !obj.fetchedAt) return null;
+              if (Date.now() - obj.fetchedAt > LS_TTL_MS) return null;
+              const items = obj.items
+                .map((x) => ({
+                  source: x.source || "",
+                  kind: x.kind || "",
+                  title: x.title || "",
+                  link: x.link || "#",
+                  pubDate: new Date(x.pubDateTs || 0),
+                  description: x.description || "",
+                }))
+                .filter((x) => x.title && x.pubDate instanceof Date && !Number.isNaN(x.pubDate.getTime()));
+              return { fetchedAt: obj.fetchedAt, items };
+            } catch {
+              return null;
+            }
+          }
+
+          async function fetchTextRace(url, { signal } = {}) {
+            const attempts = [
+              { label: "allorigins", url: "https://api.allorigins.win/raw?url=" + encodeURIComponent(url), timeoutMs: 5200 },
+              { label: "codetabs", url: "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(url), timeoutMs: 5200 },
+              { label: "direct", url, timeoutMs: 2500 },
+            ];
+
+            const controllers = [];
+            const promises = attempts.map((a) => {
+              const controller = new AbortController();
+              controllers.push(controller);
+
+              const t = setTimeout(() => {
+                try {
+                  controller.abort();
+                } catch {}
+              }, a.timeoutMs);
+
+              const onAbort = () => {
+                try {
+                  controller.abort();
+                } catch {}
+              };
+
+              if (signal) {
+                if (signal.aborted) onAbort();
+                else signal.addEventListener("abort", onAbort, { once: true });
+              }
+
+              const p = fetch(a.url, { cache: "no-store", signal: controller.signal })
+                .then((res) => {
+                  if (!res.ok) throw new Error(`${a.label} HTTP ${res.status}`);
+                  return res.text();
+                })
+                .then((text) => ({ ok: true, text, label: a.label }))
+                .catch((err) => ({ ok: false, err, label: a.label }))
+                .finally(() => {
+                  clearTimeout(t);
+                  if (signal) {
+                    try {
+                      signal.removeEventListener("abort", onAbort);
+                    } catch {}
+                  }
+                });
+
+              return p;
+            });
+
             return new Promise((resolve, reject) => {
               let pending = promises.length;
-              const errors = [];
-              if (!pending) return reject(new AggregateError([], "All promises were rejected"));
-              promises.forEach((p, i) => {
-                Promise.resolve(p)
-                  .then(resolve)
-                  .catch((e) => {
-                    errors[i] = e;
+              let lastErr = null;
+
+              promises.forEach((p) => {
+                p.then((r) => {
+                  if (r && r.ok) {
+                    controllers.forEach((c) => {
+                      try {
+                        c.abort();
+                      } catch {}
+                    });
+                    resolve(r.text);
+                  } else {
+                    lastErr = r?.err || lastErr;
                     pending--;
-                    if (!pending) reject(new AggregateError(errors, "All promises were rejected"));
-                  });
+                    if (pending === 0) reject(lastErr || new Error("Failed to fetch feed"));
+                  }
+                });
               });
             });
           }
 
-          function linkAbort(srcSignal, controller) {
-            if (!srcSignal) return () => {};
-            const onAbort = () => {
-              try {
-                controller.abort();
-              } catch {}
-            };
-            if (srcSignal.aborted) onAbort();
-            else srcSignal.addEventListener("abort", onAbort, { once: true });
-            return () => {
-              try {
-                srcSignal.removeEventListener("abort", onAbort);
-              } catch {}
-            };
-          }
-
-          async function fetchTextFast(url, { signal } = {}) {
-            const attempts = [
-              { label: "direct", url },
-              { label: "allorigins", url: "https://api.allorigins.win/raw?url=" + encodeURIComponent(url) },
-              { label: "codetabs", url: "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(url) },
-            ];
-
-            const controllers = attempts.map(() => new AbortController());
-            const unsubs = controllers.map((c) => linkAbort(signal, c));
-
-            function fetchAttempt(i) {
-              const timeoutMs = attempts[i].label === "direct" ? 4500 : 6500;
-              const c = controllers[i];
-
-              const timeout = setTimeout(() => {
-                try {
-                  c.abort();
-                } catch {}
-              }, timeoutMs);
-
-              return fetch(attempts[i].url, { cache: "no-store", signal: c.signal })
-                .then((res) => {
-                  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                  return res.text();
-                })
-                .finally(() => clearTimeout(timeout));
-            }
-
-            const promises = attempts.map((_, i) => fetchAttempt(i));
-
-            try {
-              const text = await promiseAny(promises);
-              controllers.forEach((c) => {
-                try {
-                  c.abort();
-                } catch {}
-              });
-              unsubs.forEach((u) => u());
-              return text;
-            } catch {
-              unsubs.forEach((u) => u());
-              throw new Error("Failed to fetch feed (CORS/proxy)");
-            }
-          }
-
-          function pickTopN(items, n) {
-            return Array.isArray(items) ? items.slice(0, Math.max(0, n | 0)) : [];
-          }
-
           async function fetchAndParseRSS(feed, signal, maxItemsPerFeed = 100) {
-            const xmlText = await fetchTextFast(feed.url, { signal });
+            const xmlText = await fetchTextRace(feed.url, { signal });
             const doc = new DOMParser().parseFromString(xmlText, "text/xml");
             if (doc.querySelector("parsererror")) throw new Error("RSS parse error");
 
-            const items = Array.from(doc.querySelectorAll("item"));
-            const parsed = items
+            const nodes = Array.from(doc.querySelectorAll("item"));
+            const parsed = nodes
               .map((item) => {
                 const title = item.querySelector("title")?.textContent?.trim() ?? "(no title)";
                 const link = safeUrl(item.querySelector("link")?.textContent?.trim() ?? "#");
@@ -2607,142 +3117,12 @@
               .filter((x) => x.pubDate instanceof Date && !Number.isNaN(x.pubDate.getTime()));
 
             parsed.sort((a, b) => b.pubDate - a.pubDate);
-            return pickTopN(parsed, maxItemsPerFeed);
+            return parsed.slice(0, maxItemsPerFeed);
           }
 
-          // Search filter helpers
-          function normalizeToken(s) {
-            return String(s || "")
-              .toUpperCase()
-              .replace(/[^A-Z0-9\u0600-\u06FF]+/g, "");
-          }
-          function buildSearchBlob(item) {
-            const t = item?.title || "";
-            const d = item?.description || "";
-            return normalizeToken(t + " " + d);
-          }
-          function parseTextTerms(text) {
-            const raw = String(text || "").trim();
-            if (!raw) return [];
-            return raw
-              .split(",")
-              .map((x) => x.trim())
-              .filter(Boolean)
-              .slice(0, 12);
-          }
-          function matchTextTerms(item, terms) {
-            if (!terms.length) return true;
-            const blob = buildSearchBlob(item);
-            return terms.every((t) => blob.includes(normalizeToken(t)));
-          }
-          function filterItems(items) {
-            let out = items || [];
-
-            // Arabic: no kind filter
-            if (currentTab !== "arabic" && currentKindFilter && currentKindFilter !== "ALL") {
-              out = out.filter((x) => String(x.kind || "").toLowerCase() === String(currentKindFilter).toLowerCase());
-            }
-
-            const terms = parseTextTerms(currentTextFilter);
-            if (terms.length) out = out.filter((x) => matchTextTerms(x, terms));
-
-            return out;
-          }
-
-          function isNewItem(pubDate, hours = 6) {
-            if (!(pubDate instanceof Date)) return false;
-            const ageMs = Date.now() - pubDate.getTime();
-            return ageMs >= 0 && ageMs <= hours * 60 * 60 * 1000;
-          }
-
-          function render(items) {
-            const list = $("#newsList");
-            if (!list) return;
-            list.textContent = "";
-
-            for (const it of items) {
-              const li = document.createElement("li");
-              li.className = "news-item";
-
-              const titleRow = document.createElement("div");
-              titleRow.className = "news-title-row";
-
-              const a = document.createElement("a");
-              a.href = it.link;
-              a.target = "_blank";
-              a.rel = "noopener noreferrer";
-              a.textContent = it.title;
-              titleRow.appendChild(a);
-
-              if (it.kind) {
-                const tag = document.createElement("span");
-                tag.className = "news-tag";
-                tag.textContent = it.kind;
-                titleRow.appendChild(tag);
-              }
-
-              if (isNewItem(it.pubDate, 6)) {
-                const nb = document.createElement("span");
-                nb.className = "badge-new";
-                nb.textContent = "NEW";
-                titleRow.appendChild(nb);
-              }
-
-              const meta = document.createElement("span");
-              meta.className = "news-meta";
-              meta.textContent = `${it.source} • ${dateFmtWithTime.format(it.pubDate)}`;
-              titleRow.appendChild(meta);
-
-              const star = document.createElement("button");
-              star.className = "star-btn" + (isFavorited(it.link) ? " active" : "");
-              star.title = isFavorited(it.link) ? "Remove from favorites" : "Add to favorites";
-              star.setAttribute("aria-label", "Toggle favorite");
-              star.innerHTML = `
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M12 17.27l5.18 3.04-1.39-5.97L20 9.24l-6.19-.53L12 3 10.19 8.71 4 9.24l4.21 5.1-1.39 5.97L12 17.27z"></path>
-                </svg>
-              `;
-              star.addEventListener("click", (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                toggleFavorite(it.link);
-                applyRenderFromCacheOrCurrent(false);
-              });
-              titleRow.appendChild(star);
-
-              li.appendChild(titleRow);
-
-              if (it.description) {
-                const p = document.createElement("p");
-                p.className = "news-desc";
-                p.textContent = it.description;
-                li.appendChild(p);
-              }
-
-              list.appendChild(li);
-            }
-          }
-
-          function updateStatusLine(allItems, completed, total, startedAt) {
-            const statusText = $("#newsStatusText");
-            if (!statusText) return;
-            const secs = startedAt ? ((Date.now() - startedAt) / 1000).toFixed(1) : "0.0";
-            const filtered = filterItems(allItems || []);
-            statusText.textContent = `${filtered.length}/${(allItems || []).length} items • ${completed}/${total} feeds • ${secs}s`;
-          }
-
-          function setLoadingUi(message = "Loading...") {
-            const t = $("#newsStatusText");
-            const list = $("#newsList");
-            if (t) t.textContent = message;
-            if (list) list.textContent = "";
-          }
-
-          // Yellow filter tags beside status line (News/Forex etc). No filters for Arabic.
           function renderSourceFilters() {
-            const host = $("#sourceFilters");
-            if (!host) return;
-            host.textContent = "";
+            if (!sourceFilters) return;
+            sourceFilters.textContent = "";
 
             if (currentTab === "arabic") return;
 
@@ -2750,76 +3130,38 @@
             const kinds = Array.from(new Set(feeds.map((f) => f.kind).filter(Boolean)));
             if (kinds.length <= 1) return;
 
-            const allTag = document.createElement("span");
-            allTag.className = "news-tag clickable" + (currentKindFilter === "ALL" ? " active" : "");
-            allTag.textContent = "All";
-            allTag.title = "Show all sources";
-            allTag.addEventListener("click", () => setKindFilter("ALL"));
-            host.appendChild(allTag);
+            const mk = (label, value) => {
+              const chip = document.createElement("span");
+              chip.className = "news-chip" + (currentKindFilter === value ? " active" : "");
+              chip.textContent = label;
+              chip.title = label;
+              chip.addEventListener("click", () => {
+                currentKindFilter = value || "ALL";
+                safeStorageSet("newsKindFilter:" + currentTab, currentKindFilter);
+                renderSourceFilters();
+                applyRender(true);
+              });
+              return chip;
+            };
 
-            for (const k of kinds) {
-              const tag = document.createElement("span");
-              tag.className = "news-tag clickable" + (currentKindFilter === k ? " active" : "");
-              tag.textContent = k;
-              tag.title = `Show ${k}`;
-              tag.addEventListener("click", () => setKindFilter(k));
-              host.appendChild(tag);
-            }
-          }
-
-          function setKindFilter(kind) {
-            currentKindFilter = kind || "ALL";
-            safeStorageSet("newsKindFilter:" + currentTab, currentKindFilter);
-            renderSourceFilters();
-            applyRenderFromCacheOrCurrent(true);
-          }
-
-          function syncSearchUi() {
-            const input = $("#newsSearch");
-            if (input) input.value = currentTextFilter || "";
-
-            const hint = $("#searchHint");
-            const terms = parseTextTerms(currentTextFilter);
-            if (hint) hint.textContent = terms.length ? `Terms: ${terms.join(", ")} (AND)` : "Tip: multiple terms = AND";
-          }
-
-          function applyRenderFromCacheOrCurrent(scrollTop = false) {
-            const cached = tabItemsCache.get(currentTab);
-            if (!cached || !Array.isArray(cached.items)) return;
-
-            const filtered = filterItems(cached.items);
-            render(filtered);
-            updateStatusLine(cached.items, cached.completedFeeds || 0, cached.totalFeeds || 0, cached.startedAt || 0);
-
-            if (scrollTop) {
-              const list = $("#newsList");
-              if (list) list.scrollTo({ top: 0, behavior: "smooth" });
-            }
+            sourceFilters.appendChild(mk("All", "ALL"));
+            for (const k of kinds) sourceFilters.appendChild(mk(k, k));
           }
 
           async function loadAndRender({ force = false } = {}) {
             const myToken = ++activeLoadToken;
 
-            const existing = tabItemsCache.get(currentTab);
-            if (!force && existing?.fetchedAt && Date.now() - existing.fetchedAt < CACHE_TTL_MS) {
-              applyRenderFromCacheOrCurrent(false);
+            const cached = tabItemsCache.get(currentTab);
+            if (!force && cached?.fetchedAt && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
+              applyRender(false);
               return;
             }
 
-            setLoadingUi("Loading...");
-            renderSourceFilters();
-            syncSearchUi();
-
-            if (newsAbortController) {
-              try {
-                newsAbortController.abort();
-              } catch {}
-            }
-            newsAbortController = new AbortController();
+            abortInFlight();
+            abort = new AbortController();
 
             const startedAt = Date.now();
-            const feedsRaw = TAB_FEEDS[currentTab] || TAB_FEEDS.news;
-            const feeds = uniqFeedsByUrl(feedsRaw);
+            const feeds = uniqFeedsByUrl(TAB_FEEDS[currentTab] || TAB_FEEDS.news);
 
             let aggregated = [];
             let completed = 0;
@@ -2832,55 +3174,71 @@
               fetchedAt: Date.now(),
             });
 
-            updateStatusLine(aggregated, completed, feeds.length, startedAt);
+            renderSourceFilters();
+            syncSearchUi();
+            updateToggleButtons();
+            setStatus(0, 0, completed, feeds.length, startedAt);
 
-            const tasks = feeds.map(async (f) => {
-              try {
-                const parsed = await fetchAndParseRSS(f, newsAbortController.signal, MAX_ITEMS_PER_FEED);
-                if (myToken !== activeLoadToken) return;
+            let idx = 0;
+            async function worker() {
+              while (idx < feeds.length) {
+                const myIdx = idx++;
+                const f = feeds[myIdx];
+                try {
+                  const parsed = await fetchAndParseRSS(f, abort.signal, MAX_ITEMS_PER_FEED);
+                  if (myToken !== activeLoadToken) return;
 
-                aggregated = mergeAndSort(aggregated, parsed);
+                  await Promise.resolve();
+                  aggregated = mergeAndSort(aggregated, parsed);
 
-                const cached = tabItemsCache.get(currentTab);
-                if (cached) {
-                  cached.items = aggregated;
-                  cached.totalFeeds = feeds.length;
-                  cached.startedAt = startedAt;
-                  cached.fetchedAt = Date.now();
+                  const c = tabItemsCache.get(currentTab);
+                  if (c) {
+                    c.items = aggregated;
+                    c.totalFeeds = feeds.length;
+                    c.startedAt = startedAt;
+                    c.fetchedAt = Date.now();
+                  }
+
+                  saveTabToLocalStorage(currentTab, aggregated);
+
+                  requestAnimationFrame(() => {
+                    if (myToken !== activeLoadToken) return;
+                    applyRender(false);
+                  });
+                } catch {
+                  // ignore per-feed failure
+                } finally {
+                  completed++;
+                  if (myToken !== activeLoadToken) return;
+
+                  const c = tabItemsCache.get(currentTab);
+                  if (c) c.completedFeeds = completed;
+
+                  const filteredCount = filterItems(aggregated).length;
+                  setStatus(aggregated.length, filteredCount, completed, feeds.length, startedAt);
                 }
-
-                applyRenderFromCacheOrCurrent(false);
-              } catch {
-                // ignore per-feed failure
-              } finally {
-                completed++;
-                if (myToken !== activeLoadToken) return;
-
-                const cached = tabItemsCache.get(currentTab);
-                if (cached) cached.completedFeeds = completed;
-
-                updateStatusLine(aggregated, completed, feeds.length, startedAt);
               }
-            });
+            }
 
-            await Promise.allSettled(tasks);
+            const workers = [];
+            for (let i = 0; i < Math.max(1, CONCURRENCY); i++) workers.push(worker());
+            await Promise.allSettled(workers);
 
             if (myToken !== activeLoadToken) return;
 
             if (!aggregated.length) {
-              const statusText = $("#newsStatusText");
-              if (statusText) statusText.textContent = "Error: feeds did not load (CORS/proxy). Try Refresh.";
-              const list = $("#newsList");
+              if (statusText) statusText.textContent = "Error: feeds did not load. Try Refresh.";
               if (list) {
                 list.innerHTML = `
                   <li class="news-item">
                     <div class="news-title-row">
-                      <span style="color: var(--accent-red); font-weight: 800;">No items loaded</span>
+                      <span style="color: var(--accent-red); font-weight: 900;">No items loaded</span>
                       <span class="news-meta">Try Refresh</span>
                     </div>
                     <p class="news-desc">
-                      Some RSS endpoints (especially Arabic) may intermittently block browser/proxy access.
-                      This panel tries direct + two proxies with timeouts to prevent “forever loading”.
+                      Some RSS endpoints intermittently block browser/proxy access.
+                      This build uses a fastest-wins parallel fetch strategy + cache.
+                      If a feed provider is down, it will fail fast instead of “loading forever”.
                     </p>
                   </li>
                 `;
@@ -2893,14 +3251,10 @@
             safeStorageSet("newsTab", tabKey);
 
             currentTextFilter = safeStorageGet("newsTextFilter:" + currentTab, "") || "";
-
-            // Arabic: always ALL (no filters)
             if (tabKey === "arabic") currentKindFilter = "ALL";
             else currentKindFilter = safeStorageGet("newsKindFilter:" + currentTab, "ALL") || "ALL";
 
-            // Direction + placeholder
             setNewsRtl(tabKey === "arabic");
-            const input = $("#newsSearch");
             if (input) {
               input.placeholder =
                 tabKey === "arabic"
@@ -2908,18 +3262,19 @@
                   : "Filter: EURUSD, Gold, CPI, Powell… (comma-separated)";
             }
 
-            // Activate button UI
             for (const b of $$("#newsTabs .tab-btn")) b.classList.toggle("active", b.dataset.tab === tabKey);
 
             renderSourceFilters();
             syncSearchUi();
+            updateToggleButtons();
           }
 
           function bindTabs() {
             const tabs = $("#newsTabs");
             if (!tabs) return;
 
-            tabs.addEventListener(
+            const off = on(
+              tabs,
               "click",
               (e) => {
                 const btn = e.target.closest(".tab-btn");
@@ -2929,75 +3284,119 @@
 
                 setActiveTab(tab);
 
-                if (newsIntervalId) clearInterval(newsIntervalId);
+                const ls = loadTabFromLocalStorage(currentTab);
+                if (ls && ls.items.length) {
+                  tabItemsCache.set(currentTab, {
+                    items: ls.items,
+                    completedFeeds: 0,
+                    totalFeeds: (TAB_FEEDS[currentTab] || []).length,
+                    startedAt: Date.now(),
+                    fetchedAt: Date.now(),
+                  });
+                  applyRender(false, "cached");
+                }
+
+                if (intervalId) clearInterval(intervalId);
                 loadAndRender({ force: false });
-                newsIntervalId = setInterval(() => loadAndRender({ force: false }), 60000);
+                intervalId = setInterval(() => loadAndRender({ force: false }), 60000);
               },
               { passive: true }
             );
+            add(off);
           }
 
-          // Bind controls
-          $("#refreshNews")?.addEventListener(
-            "click",
-            () => {
-              tabItemsCache.delete(currentTab);
-              loadAndRender({ force: true });
-            },
-            { passive: true }
-          );
+          function bindControls() {
+            add(
+              on($("#refreshNews"), "click", () => {
+                tabItemsCache.delete(currentTab);
+                safeStorageSet(lsKeyForTab(currentTab), "");
+                loadAndRender({ force: true });
+              })
+            );
 
-          $("#fontDown")?.addEventListener(
-            "click",
-            () => {
-              newsFontScale -= 0.1;
-              applyNewsFontScale();
-            },
-            { passive: true }
-          );
+            add(
+              on($("#fontDown"), "click", () => {
+                newsFontScale -= 0.1;
+                applyNewsFontScale();
+              })
+            );
 
-          $("#fontUp")?.addEventListener(
-            "click",
-            () => {
-              newsFontScale += 0.1;
-              applyNewsFontScale();
-            },
-            { passive: true }
-          );
+            add(
+              on($("#fontUp"), "click", () => {
+                newsFontScale += 0.1;
+                applyNewsFontScale();
+              })
+            );
 
-          const input = $("#newsSearch");
-          if (input) {
-            input.addEventListener("input", () => {
-              currentTextFilter = input.value || "";
-              safeStorageSet("newsTextFilter:" + currentTab, currentTextFilter);
-              syncSearchUi();
-              applyRenderFromCacheOrCurrent(false);
-            });
+            add(
+              on($("#favOnly"), "click", () => {
+                favOnly = !favOnly;
+                safeStorageSet("newsFavOnly", favOnly ? "1" : "0");
+                updateToggleButtons();
+                applyRender(true);
+              })
+            );
 
-            // Shortcut: "/" focuses search
-            document.addEventListener("keydown", (e) => {
-              if (String(e.key) === "/" && !e.ctrlKey && !e.metaKey && !e.altKey) {
-                const tag = e.target && e.target.tagName ? e.target.tagName : "";
-                if (tag !== "INPUT" && tag !== "TEXTAREA") {
-                  e.preventDefault();
-                  input.focus();
-                }
-              }
-            });
+            add(
+              on($("#newOnly"), "click", () => {
+                newOnly = !newOnly;
+                safeStorageSet("newsNewOnly", newOnly ? "1" : "0");
+                updateToggleButtons();
+                applyRender(true);
+              })
+            );
+
+            if (input) {
+              add(
+                on(input, "input", () => {
+                  currentTextFilter = input.value || "";
+                  safeStorageSet("newsTextFilter:" + currentTab, currentTextFilter);
+                  syncSearchUi();
+                  applyRender(false);
+                })
+              );
+            }
+
+            add(on(window, "online", () => applyRender(false), { passive: true }));
+            add(on(window, "offline", () => applyRender(false), { passive: true }));
           }
 
-          // Init
           bindTabs();
+          bindControls();
           setActiveTab(currentTab);
+
+          const initialLs = loadTabFromLocalStorage(currentTab);
+          if (initialLs && initialLs.items.length) {
+            tabItemsCache.set(currentTab, {
+              items: initialLs.items,
+              completedFeeds: 0,
+              totalFeeds: (TAB_FEEDS[currentTab] || []).length,
+              startedAt: Date.now(),
+              fetchedAt: Date.now(),
+            });
+            applyRender(false, "cached");
+          }
+
           loadAndRender({ force: false });
-          newsIntervalId = setInterval(() => loadAndRender({ force: false }), 60000);
+          intervalId = setInterval(() => loadAndRender({ force: false }), 60000);
+
+          add(() => intervalId && clearInterval(intervalId));
+          add(() => abortInFlight());
+
+          return () => {
+            for (const d of disposers) {
+              try {
+                d();
+              } catch {}
+            }
+          };
         }
 
         /* ===================== Heatmap panel ===================== */
         function initHeatmapPanel() {
           const theme = getTheme();
           const container = $("#heatmapWidget");
-          if (!container) return;
+          if (!container) return () => {};
           container.textContent = "";
 
           const wrap = document.createElement("div");
@@ -3023,6 +3422,8 @@
 
           wrap.appendChild(script);
           container.appendChild(wrap);
+
+          return () => {};
         }
 
         /* ===================== Modals ===================== */
@@ -3041,7 +3442,7 @@
 
           const script = document.createElement("script");
           script.type = "text/javascript";
-          script.src = "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js";
+          script.src = TV_CHART_EMBED_URL;
           script.async = true;
 
           script.textContent = JSON.stringify({
@@ -3103,6 +3504,7 @@
         function bindModalClose() {
           const chartModal = $("#chartModal");
           const tfModal = $("#tfChartModal");
+
           $("#closeChartModal")?.addEventListener("click", closePopup);
           $("#closeTfChartModal")?.addEventListener("click", closeTfPopup);
 
@@ -3120,34 +3522,50 @@
         window.closeTfPopup = closeTfPopup;
 
         /* ===================== Keyboard shortcuts ===================== */
+        function focusNewsSearch() {
+          if (!Panel.isOpenKey("news")) {
+            Panel.open("news");
+          }
+          requestAnimationFrame(() => {
+            const input = $("#newsSearch");
+            if (input) input.focus();
+          });
+        }
+
         function bindKeyboard() {
-          document.addEventListener(
-            "keydown",
-            (e) => {
-              const tag = e.target && e.target.tagName ? e.target.tagName : "";
-              if (tag === "INPUT" || tag === "TEXTAREA") return;
-              switch (String(e.key).toLowerCase()) {
-                case "escape":
-                  closePopup();
-                  closeTfPopup();
-                  closePanel();
-                  break;
-                case "c":
-                  openPanel("calendar");
-                  break;
-                case "n":
-                  openPanel("news");
-                  break;
-                case "h":
-                  openPanel("heatmap");
-                  break;
-                case "t":
-                  toggleTheme();
-                  break;
-              }
-            },
-            { passive: true }
-          );
+          document.addEventListener("keydown", (e) => {
+            const tag = e.target && e.target.tagName ? e.target.tagName : "";
+            const isTyping = tag === "INPUT" || tag === "TEXTAREA" || e.target?.isContentEditable;
+            const key = String(e.key);
+
+            if (key === "/" && !isTyping && !e.ctrlKey && !e.metaKey && !e.altKey) {
+              e.preventDefault();
+              focusNewsSearch();
+              return;
+            }
+
+            if (isTyping) return;
+
+            switch (key.toLowerCase()) {
+              case "escape":
+                closePopup();
+                closeTfPopup();
+                Panel.close();
+                break;
+              case "c":
+                Panel.open("calendar");
+                break;
+              case "n":
+                Panel.open("news");
+                break;
+              case "h":
+                Panel.open("heatmap");
+                break;
+              case "t":
+                toggleTheme();
+                break;
+            }
+          });
         }
 
         function scrollToSymbol(symbol) {
@@ -3173,23 +3591,39 @@
           bindKeyboard();
           bindTickerEvents();
 
-          generateChartGrid();
+          ChartGrid.build();
+          ChartGrid.setupObserver();
 
           initTickers();
 
+          // Refresh top bar widgets once more AFTER the preloader ends (zoom/DPR settle)
           document.addEventListener(
-            "visibilitychange",
+            "preloader:done",
             () => {
-              if (!document.hidden) {
-                startTickerFitBursts();
-                const strip = $("#tickerStrip");
-                if (strip && !strip.querySelector("tv-ticker-tag") && !strip.querySelector(".ticker-loading")) {
+              ensureTickerScriptOnce()
+                .then(() => {
                   refreshTickersSoft();
-                }
-              }
+                  startTickerFitBursts();
+                  setTimeout(() => startTickerFitBursts(), 600);
+                })
+                .catch(() => {
+                  startTickerFitBursts();
+                  setTimeout(() => startTickerFitBursts(), 600);
+                });
             },
-            { passive: true }
+            { once: true }
           );
+
+          document.addEventListener("visibilitychange", () => {
+            if (!document.hidden) {
+              startTickerFitBursts();
+              const strip = $("#tickerStrip");
+              if (strip && !strip.querySelector("tv-ticker-tag") && !strip.querySelector(".ticker-loading")) {
+                refreshTickersSoft();
+              }
+              ChartGrid.refreshVisible();
+            }
+          });
         }
 
         init();
@@ -3197,4 +3631,3 @@
     </script>
   </body>
 </html>
-
