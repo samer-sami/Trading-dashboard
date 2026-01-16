@@ -48,6 +48,7 @@
         --accent-purple: #8b5cf6;
 
         --dock-w: 42px;
+        --dock-h: 56px; /* mobile bottom bar height */
         --topbar-height: 42px;
         --topbar-bg: #0b0f1a;
         --topbar-border: rgba(255, 255, 255, 0.12);
@@ -62,7 +63,7 @@
         --zoom-comp: 1;
 
         /* Dynamic calendar sizing computed by JS */
-        --calendar-sessions-h: 168px;
+        --calendar-sessions-h: 190px;
 
         /* Focus ring */
         --focus-ring: rgba(59, 130, 246, 0.35);
@@ -193,7 +194,7 @@
         cursor: pointer;
       }
 
-      /* Dock */
+      /* Dock (desktop sidebar) */
       .dock {
         position: fixed;
         right: 0;
@@ -281,6 +282,10 @@
 
       .dock-btn:hover .dock-tooltip {
         opacity: 1;
+      }
+
+      .mobile-only {
+        display: none;
       }
 
       /* Main */
@@ -487,22 +492,19 @@
         height: 100%;
         display: flex;
         flex-direction: column;
-        overflow: hidden; /* keep sessions docked; only the upper calendar scrolls */
+        overflow: hidden;
         background: var(--bg-secondary);
       }
 
-      /* UPDATED: upper calendar is the scroll area */
+      /* upper calendar scrollable */
       .calendar-section {
         flex: 1 1 auto;
         min-height: 0;
-        overflow: auto; /* scrolling happens here */
+        overflow: auto; /* changed: allows scrolling in upper calendar area */
         background: var(--bg-secondary);
         position: relative;
-        overscroll-behavior: contain;
-        -webkit-overflow-scrolling: touch;
       }
 
-      /* UPDATED: sessions docked at bottom + tighter spacing */
       .sessions-section {
         flex: 0 0 auto;
         height: var(--calendar-sessions-h);
@@ -512,8 +514,7 @@
         overflow: hidden;
         display: flex;
         flex-direction: column;
-        min-height: 120px; /* slightly smaller but safe */
-        gap: 4px;
+        min-height: 140px;
       }
 
       #sessionContainer {
@@ -522,21 +523,21 @@
         overflow: auto;
         display: flex;
         flex-direction: column;
-        gap: 4px; /* tighter */
+        gap: 6px;
         padding-right: 2px;
       }
 
       .session-row {
         display: flex;
         align-items: center;
-        gap: 6px; /* tighter */
+        gap: 8px;
       }
 
       .session-label {
-        width: calc(88px * var(--zoom-comp));
-        min-width: calc(78px * var(--zoom-comp));
+        width: calc(94px * var(--zoom-comp));
+        min-width: calc(82px * var(--zoom-comp));
         font-size: calc(11px * var(--zoom-comp));
-        font-weight: 800;
+        font-weight: 700;
         color: var(--text-secondary);
         display: flex;
         flex-direction: column;
@@ -547,12 +548,12 @@
         font-size: calc(10px * var(--zoom-comp));
         color: var(--text-muted);
         font-variant-numeric: tabular-nums;
-        font-weight: 700;
+        font-weight: 600;
       }
 
       .session-bar-container {
         flex: 1;
-        height: calc(16px * var(--zoom-comp)); /* slightly smaller */
+        height: calc(18px * var(--zoom-comp));
         min-height: 14px;
         background: var(--bg-secondary);
         border-radius: 6px;
@@ -615,24 +616,22 @@
         flex: 0 0 auto;
         display: flex;
         justify-content: space-between;
-        margin-top: 2px; /* tighter */
-        padding-left: calc(96px * var(--zoom-comp)); /* matches reduced label width */
+        margin-top: 4px; /* minimal spacing */
+        padding-left: calc(102px * var(--zoom-comp));
         gap: 6px;
       }
 
       .hour-labels span {
         font-size: calc(10px * var(--zoom-comp));
         color: var(--text-muted);
-        font-weight: 800;
+        font-weight: 700;
       }
 
-      /* UPDATED: let upper calendar grow naturally inside scroll container */
       #economic-calendar-widget {
+        height: 100%;
         width: 100%;
         background: var(--bg-secondary);
         position: relative;
-        min-height: 100%;
-        height: auto;
       }
 
       .calendar-container .session-label,
@@ -647,8 +646,8 @@
         text-align: center;
         font-weight: 900;
         line-height: 1.1;
-        font-size: calc(13px * var(--zoom-comp)); /* slightly smaller */
-        margin: 0 0 2px; /* tighter */
+        font-size: calc(14px * var(--zoom-comp));
+        margin: 0 0 4px; /* minimal spacing */
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -1070,37 +1069,6 @@
         min-height: 0;
       }
 
-      @media (max-width: 768px) {
-        .dock {
-          width: 36px;
-        }
-        main {
-          right: 36px;
-        }
-        .panel {
-          width: 88%;
-          right: 36px;
-        }
-        .topbar {
-          padding-right: 36px;
-        }
-      }
-
-      @media (prefers-reduced-motion: reduce) {
-        .dock-btn,
-        .watermark,
-        .tf-square,
-        .panel,
-        .close-btn,
-        .news-btn,
-        .news-item,
-        .tab-btn,
-        .news-chip,
-        .star-btn {
-          transition: none !important;
-        }
-      }
-
       /* ===================== Preloader ===================== */
       .preloader {
         position: fixed;
@@ -1431,6 +1399,108 @@
         border-color: var(--accent-blue);
         box-shadow: 0 0 0 3px var(--focus-ring);
       }
+
+      /* ===================== Mobile layout (bottom bar + vertical charts) ===================== */
+      @media (max-width: 768px) {
+        .topbar {
+          padding-right: 0; /* no right dock on mobile */
+        }
+
+        /* Bottom bar */
+        .dock {
+          left: 0;
+          right: 0;
+          bottom: 0;
+          top: auto;
+          width: 100%;
+          height: var(--dock-h);
+          border-left: none;
+          border-top: 1px solid var(--border-color);
+          flex-direction: row;
+          align-items: center;
+          padding: 6px 8px;
+          gap: 8px;
+        }
+
+        .dock-section {
+          flex-direction: row;
+          align-items: center;
+          gap: 6px;
+        }
+
+        .dock-section + .dock-section {
+          margin-top: 0;
+          padding-top: 0;
+          border-top: none;
+          margin-left: auto;
+          padding-left: 8px;
+          border-left: 1px solid var(--border-color);
+        }
+
+        .dock-sep {
+          width: 1px;
+          height: 24px;
+          margin: 0 4px;
+        }
+
+        .dock-btn {
+          width: 42px;
+          height: 42px;
+          aspect-ratio: auto;
+          border-radius: 10px;
+        }
+
+        .dock-tooltip {
+          display: none; /* hover tooltips not helpful on mobile */
+        }
+
+        .mobile-only {
+          display: inline-flex;
+        }
+
+        main {
+          right: 0;
+          bottom: var(--dock-h); /* make room for bottom bar */
+        }
+
+        /* Panel covers full width and respects bottom bar */
+        .panel {
+          right: 0;
+          width: 100%;
+          min-width: 0;
+          height: calc(100vh - var(--topbar-height) - var(--dock-h));
+        }
+
+        /* Each symbol becomes a full-screen section (minus top/bottom bars) */
+        .chart-section {
+          height: calc(100vh - var(--topbar-height) - var(--dock-h));
+        }
+
+        /* Stack the 3 charts vertically */
+        .chart-row {
+          flex-direction: column;
+        }
+
+        .chart-cell {
+          flex: 1;
+          width: 100%;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .dock-btn,
+        .watermark,
+        .tf-square,
+        .panel,
+        .close-btn,
+        .news-btn,
+        .news-item,
+        .tab-btn,
+        .news-chip,
+        .star-btn {
+          transition: none !important;
+        }
+      }
     </style>
   </head>
 
@@ -1508,7 +1578,7 @@
       </div>
     </div>
 
-    <!-- Dock -->
+    <!-- Dock / Bottom bar -->
     <aside class="dock" id="dock" aria-label="Tools dock">
       <div class="dock-section">
         <button class="dock-btn" id="themeToggle" type="button" title="Toggle Theme" aria-label="Toggle theme" data-action="theme">
@@ -1561,6 +1631,31 @@
             <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"></path>
           </svg>
           <div class="dock-tooltip">Refresh</div>
+        </button>
+
+        <!-- Mobile-only: symbol navigation -->
+        <button
+          class="dock-btn mobile-only"
+          type="button"
+          data-action="prevSymbol"
+          title="Previous symbol"
+          aria-label="Scroll to previous symbol"
+        >
+          <svg class="icon" viewBox="0 0 24 24">
+            <path d="M6 15l6-6 6 6"></path>
+          </svg>
+        </button>
+
+        <button
+          class="dock-btn mobile-only"
+          type="button"
+          data-action="nextSymbol"
+          title="Next symbol"
+          aria-label="Scroll to next symbol"
+        >
+          <svg class="icon" viewBox="0 0 24 24">
+            <path d="M6 9l6 6 6-6"></path>
+          </svg>
         </button>
       </div>
     </aside>
@@ -1656,6 +1751,12 @@
         }
         function nowMs() {
           return performance && typeof performance.now === "function" ? performance.now() : Date.now();
+        }
+
+        /* ===================== Layout mode ===================== */
+        const MOBILE_MQL = window.matchMedia ? window.matchMedia("(max-width: 768px)") : null;
+        function isMobileLayout() {
+          return MOBILE_MQL ? !!MOBILE_MQL.matches : window.innerWidth <= 768;
         }
 
         /* ===================== Constants ===================== */
@@ -2087,12 +2188,14 @@
             main.textContent = "";
             const frag = document.createDocumentFragment();
 
-            for (let i = 0; i < SYMBOLS.length; i += 2) {
+            const groupSize = isMobileLayout() ? 1 : 2;
+
+            for (let i = 0; i < SYMBOLS.length; i += groupSize) {
               const section = document.createElement("div");
               section.className = "chart-section";
-              section.id = `section-${Math.floor(i / 2) + 1}`;
+              section.id = `section-${Math.floor(i / groupSize) + 1}`;
 
-              for (let j = 0; j < 2 && i + j < SYMBOLS.length; j++) {
+              for (let j = 0; j < groupSize && i + j < SYMBOLS.length; j++) {
                 const sym = SYMBOLS[i + j];
                 const row = document.createElement("div");
                 row.className = "chart-row";
@@ -2234,9 +2337,7 @@
               icon: '<svg class="icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>',
               html: `
                 <div class="calendar-container" id="calendarRoot">
-                  <div class="calendar-section" id="calendarScroll">
-                    <div id="economic-calendar-widget"></div>
-                  </div>
+                  <div class="calendar-section"><div id="economic-calendar-widget"></div></div>
                   <div class="sessions-section" id="sessionsSection">
                     <div id="localClock" class="local-clock"></div>
                     <div id="sessionContainer"></div>
@@ -2397,6 +2498,14 @@
               toggleTheme();
               return;
             }
+            if (btn.dataset.action === "prevSymbol") {
+              scrollToAdjacentSymbol(-1);
+              return;
+            }
+            if (btn.dataset.action === "nextSymbol") {
+              scrollToAdjacentSymbol(1);
+              return;
+            }
           });
 
           $("#closePanel")?.addEventListener("click", () => Panel.close());
@@ -2404,7 +2513,7 @@
           updateThemeIcon();
         }
 
-        /* ===================== Calendar panel (docked sessions + upper scroll) ===================== */
+        /* ===================== Calendar panel (dynamic to zoom) ===================== */
         let fxVerifyScriptLoaded = false;
         let fxVerifyScriptLoading = false;
 
@@ -2444,7 +2553,7 @@
         }
 
         function setCalendarSessionsHeight(px) {
-          const v = clamp(px, 120, 360);
+          const v = clamp(px, 140, 420);
           document.documentElement.style.setProperty("--calendar-sessions-h", `${Math.round(v)}px`);
         }
 
@@ -2586,7 +2695,6 @@
             }
           }
 
-          /* UPDATED: dynamic sessions height, biased smaller; upper calendar scrolls */
           function adjustCalendarLayout() {
             const panel = $("#sidePanel");
             const sessionsSection = $("#sessionsSection");
@@ -2598,20 +2706,18 @@
             const panelBody = $("#panelBody");
             const bodyH = panelBody ? panelBody.clientHeight : panel.clientHeight;
 
-            const minH = 120;
-            const maxH = clamp(Math.floor(bodyH * 0.34), 120, 320);
+            const minH = 140;
+            const maxH = clamp(Math.floor(bodyH * 0.44), 160, 420);
 
             const contentNeed =
               (clock ? clock.scrollHeight : 0) +
               (hourLabels ? hourLabels.scrollHeight : 0) +
               sessionContainer.scrollHeight +
               6 +
-              14;
+              16;
 
             const ideal = clamp(contentNeed, minH, maxH);
-
-            /* keep the upper calendar area large; it will scroll */
-            const ensureCalendarMin = Math.floor(bodyH * 0.58);
+            const ensureCalendarMin = Math.floor(bodyH * 0.45);
             const finalH = clamp(ideal, minH, Math.max(minH, bodyH - ensureCalendarMin));
 
             setCalendarSessionsHeight(finalH);
@@ -2644,20 +2750,6 @@
           add(() => window.removeEventListener("resize", onResize));
           add(() => window.visualViewport?.removeEventListener("resize", onResize));
           add(() => document.removeEventListener("ui:zoomchange", onResize));
-
-          /* extra: observe content changes so sessions height stays dynamic */
-          if (window.ResizeObserver) {
-            const ro = new ResizeObserver(() => adjustCalendarLayout());
-            const sc = $("#sessionContainer");
-            const ss = $("#sessionsSection");
-            if (sc) ro.observe(sc);
-            if (ss) ro.observe(ss);
-            add(() => {
-              try {
-                ro.disconnect();
-              } catch {}
-            });
-          }
 
           const theme = getTheme();
           const calContainer = $("#economic-calendar-widget");
@@ -3547,6 +3639,45 @@
         window.openTfPopup = openTfPopup;
         window.closeTfPopup = closeTfPopup;
 
+        /* ===================== Symbol scrolling (mobile arrows) ===================== */
+        function scrollToSymbol(symbol) {
+          const main = $("#mainContent");
+          if (!main) return;
+          const anchor = document.getElementById(`anchor-${safeIdFromSymbol(symbol)}`);
+          if (!anchor) return;
+
+          const mainRect = main.getBoundingClientRect();
+          const anchorRect = anchor.getBoundingClientRect();
+          const targetTop = main.scrollTop + (anchorRect.top - mainRect.top);
+          main.scrollTo({ top: Math.max(0, targetTop - 6), behavior: "smooth" });
+        }
+
+        function getCurrentSymbolIndex() {
+          const main = $("#mainContent");
+          if (!main) return 0;
+
+          const y = main.scrollTop;
+          const anchors = SYMBOLS.map((s) => document.getElementById(`anchor-${safeIdFromSymbol(s.symbol)}`));
+
+          // Choose the last anchor at/above current scroll position (top-of-view)
+          let idx = 0;
+          for (let i = 0; i < anchors.length; i++) {
+            const a = anchors[i];
+            if (!a) continue;
+            const top = a.offsetTop;
+            if (top <= y + 10) idx = i;
+            else break;
+          }
+          return clamp(idx, 0, SYMBOLS.length - 1);
+        }
+
+        function scrollToAdjacentSymbol(dir) {
+          const cur = getCurrentSymbolIndex();
+          const next = clamp(cur + (dir < 0 ? -1 : 1), 0, SYMBOLS.length - 1);
+          const sym = SYMBOLS[next]?.symbol;
+          if (sym) scrollToSymbol(sym);
+        }
+
         /* ===================== Keyboard shortcuts ===================== */
         function focusNewsSearch() {
           if (!Panel.isOpenKey("news")) {
@@ -3590,27 +3721,40 @@
               case "t":
                 toggleTheme();
                 break;
+              case "arrowup":
+                if (isMobileLayout()) scrollToAdjacentSymbol(-1);
+                break;
+              case "arrowdown":
+                if (isMobileLayout()) scrollToAdjacentSymbol(1);
+                break;
             }
           });
         }
 
-        function scrollToSymbol(symbol) {
-          const main = $("#mainContent");
-          if (!main) return;
-          const anchor = document.getElementById(`anchor-${safeIdFromSymbol(symbol)}`);
-          if (!anchor) return;
-
-          const mainRect = main.getBoundingClientRect();
-          const anchorRect = anchor.getBoundingClientRect();
-          const targetTop = main.scrollTop + (anchorRect.top - mainRect.top);
-          main.scrollTo({ top: Math.max(0, targetTop - 6), behavior: "smooth" });
+        /* ===================== Layout-change rebuild ===================== */
+        let lastMobile = isMobileLayout();
+        function handlePossibleLayoutChange() {
+          const cur = isMobileLayout();
+          if (cur !== lastMobile) {
+            lastMobile = cur;
+            ChartGrid.build();
+            ChartGrid.setupObserver();
+            refreshTickersSoft();
+            startTickerFitBursts();
+          }
         }
 
         /* ===================== Init ===================== */
         function init() {
           syncZoomComp();
-          window.addEventListener("resize", syncZoomComp, { passive: true });
-          window.visualViewport?.addEventListener("resize", syncZoomComp, { passive: true });
+          window.addEventListener("resize", () => {
+            syncZoomComp();
+            handlePossibleLayoutChange();
+          }, { passive: true });
+          window.visualViewport?.addEventListener("resize", () => {
+            syncZoomComp();
+            handlePossibleLayoutChange();
+          }, { passive: true });
 
           bindDock();
           bindModalClose();
@@ -3650,6 +3794,11 @@
               ChartGrid.refreshVisible();
             }
           });
+
+          // Also listen to media query changes where supported
+          if (MOBILE_MQL && typeof MOBILE_MQL.addEventListener === "function") {
+            MOBILE_MQL.addEventListener("change", handlePossibleLayoutChange);
+          }
         }
 
         init();
