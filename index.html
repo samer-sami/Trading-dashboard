@@ -62,7 +62,7 @@
         --zoom-comp: 1;
 
         /* Dynamic calendar sizing computed by JS */
-        --calendar-sessions-h: 190px;
+        --calendar-sessions-h: 168px;
 
         /* Focus ring */
         --focus-ring: rgba(59, 130, 246, 0.35);
@@ -487,28 +487,33 @@
         height: 100%;
         display: flex;
         flex-direction: column;
-        overflow: hidden;
+        overflow: hidden; /* keep sessions docked; only the upper calendar scrolls */
         background: var(--bg-secondary);
       }
 
+      /* UPDATED: upper calendar is the scroll area */
       .calendar-section {
         flex: 1 1 auto;
         min-height: 0;
-        overflow: hidden;
+        overflow: auto; /* scrolling happens here */
         background: var(--bg-secondary);
         position: relative;
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
       }
 
+      /* UPDATED: sessions docked at bottom + tighter spacing */
       .sessions-section {
         flex: 0 0 auto;
         height: var(--calendar-sessions-h);
-        padding: 8px 10px 8px;
+        padding: 6px 8px 6px; /* minimal spacing */
         border-top: 1px solid var(--border-color);
         background: var(--bg-tertiary);
         overflow: hidden;
         display: flex;
         flex-direction: column;
-        min-height: 140px;
+        min-height: 120px; /* slightly smaller but safe */
+        gap: 4px;
       }
 
       #sessionContainer {
@@ -517,21 +522,21 @@
         overflow: auto;
         display: flex;
         flex-direction: column;
-        gap: 6px;
+        gap: 4px; /* tighter */
         padding-right: 2px;
       }
 
       .session-row {
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 6px; /* tighter */
       }
 
       .session-label {
-        width: calc(94px * var(--zoom-comp));
-        min-width: calc(82px * var(--zoom-comp));
+        width: calc(88px * var(--zoom-comp));
+        min-width: calc(78px * var(--zoom-comp));
         font-size: calc(11px * var(--zoom-comp));
-        font-weight: 700;
+        font-weight: 800;
         color: var(--text-secondary);
         display: flex;
         flex-direction: column;
@@ -542,12 +547,12 @@
         font-size: calc(10px * var(--zoom-comp));
         color: var(--text-muted);
         font-variant-numeric: tabular-nums;
-        font-weight: 600;
+        font-weight: 700;
       }
 
       .session-bar-container {
         flex: 1;
-        height: calc(18px * var(--zoom-comp));
+        height: calc(16px * var(--zoom-comp)); /* slightly smaller */
         min-height: 14px;
         background: var(--bg-secondary);
         border-radius: 6px;
@@ -610,22 +615,24 @@
         flex: 0 0 auto;
         display: flex;
         justify-content: space-between;
-        margin-top: 6px;
-        padding-left: calc(102px * var(--zoom-comp));
+        margin-top: 2px; /* tighter */
+        padding-left: calc(96px * var(--zoom-comp)); /* matches reduced label width */
         gap: 6px;
       }
 
       .hour-labels span {
         font-size: calc(10px * var(--zoom-comp));
         color: var(--text-muted);
-        font-weight: 700;
+        font-weight: 800;
       }
 
+      /* UPDATED: let upper calendar grow naturally inside scroll container */
       #economic-calendar-widget {
-        height: 100%;
         width: 100%;
         background: var(--bg-secondary);
         position: relative;
+        min-height: 100%;
+        height: auto;
       }
 
       .calendar-container .session-label,
@@ -640,8 +647,8 @@
         text-align: center;
         font-weight: 900;
         line-height: 1.1;
-        font-size: calc(14px * var(--zoom-comp));
-        margin: 0 0 6px;
+        font-size: calc(13px * var(--zoom-comp)); /* slightly smaller */
+        margin: 0 0 2px; /* tighter */
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -2227,7 +2234,9 @@
               icon: '<svg class="icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>',
               html: `
                 <div class="calendar-container" id="calendarRoot">
-                  <div class="calendar-section"><div id="economic-calendar-widget"></div></div>
+                  <div class="calendar-section" id="calendarScroll">
+                    <div id="economic-calendar-widget"></div>
+                  </div>
                   <div class="sessions-section" id="sessionsSection">
                     <div id="localClock" class="local-clock"></div>
                     <div id="sessionContainer"></div>
@@ -2395,7 +2404,7 @@
           updateThemeIcon();
         }
 
-        /* ===================== Calendar panel (dynamic to zoom) ===================== */
+        /* ===================== Calendar panel (docked sessions + upper scroll) ===================== */
         let fxVerifyScriptLoaded = false;
         let fxVerifyScriptLoading = false;
 
@@ -2435,7 +2444,7 @@
         }
 
         function setCalendarSessionsHeight(px) {
-          const v = clamp(px, 140, 420);
+          const v = clamp(px, 120, 360);
           document.documentElement.style.setProperty("--calendar-sessions-h", `${Math.round(v)}px`);
         }
 
@@ -2577,6 +2586,7 @@
             }
           }
 
+          /* UPDATED: dynamic sessions height, biased smaller; upper calendar scrolls */
           function adjustCalendarLayout() {
             const panel = $("#sidePanel");
             const sessionsSection = $("#sessionsSection");
@@ -2588,18 +2598,20 @@
             const panelBody = $("#panelBody");
             const bodyH = panelBody ? panelBody.clientHeight : panel.clientHeight;
 
-            const minH = 140;
-            const maxH = clamp(Math.floor(bodyH * 0.44), 160, 420);
+            const minH = 120;
+            const maxH = clamp(Math.floor(bodyH * 0.34), 120, 320);
 
             const contentNeed =
               (clock ? clock.scrollHeight : 0) +
               (hourLabels ? hourLabels.scrollHeight : 0) +
               sessionContainer.scrollHeight +
-              8 +
-              24;
+              6 +
+              14;
 
             const ideal = clamp(contentNeed, minH, maxH);
-            const ensureCalendarMin = Math.floor(bodyH * 0.45);
+
+            /* keep the upper calendar area large; it will scroll */
+            const ensureCalendarMin = Math.floor(bodyH * 0.58);
             const finalH = clamp(ideal, minH, Math.max(minH, bodyH - ensureCalendarMin));
 
             setCalendarSessionsHeight(finalH);
@@ -2632,6 +2644,20 @@
           add(() => window.removeEventListener("resize", onResize));
           add(() => window.visualViewport?.removeEventListener("resize", onResize));
           add(() => document.removeEventListener("ui:zoomchange", onResize));
+
+          /* extra: observe content changes so sessions height stays dynamic */
+          if (window.ResizeObserver) {
+            const ro = new ResizeObserver(() => adjustCalendarLayout());
+            const sc = $("#sessionContainer");
+            const ss = $("#sessionsSection");
+            if (sc) ro.observe(sc);
+            if (ss) ro.observe(ss);
+            add(() => {
+              try {
+                ro.disconnect();
+              } catch {}
+            });
+          }
 
           const theme = getTheme();
           const calContainer = $("#economic-calendar-widget");
